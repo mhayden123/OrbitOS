@@ -113,7 +113,8 @@ function M.run(test,equal)
     local w=d.open({id="panel",title="Panel",create=function(t) local p=panel.new(t,keys); return {render=function() p.draw("Panel","",{{id="ok",label="OK"}}) end} end})
     d.render(); local frame=w.surface.frame(); local expected=theme.palette[1]
     equal(math.floor(frame.palette[1][1]*255),math.floor(expected/65536))
-    assert(frame.rows[1][3]:find("0")); d.stop()
+    assert(not frame.rows[1][1]:find("Panel"),"Floating window title should not be repeated in its content")
+    assert(frame.rows[4][1]:find("OK")); d.stop()
     local after={native.term.getPaletteColor(1)}; for i=1,3 do equal(before[i],after[i]) end
   end)
   test("Orbit UI: returning from a child screen repaints the parent even when its state is unchanged",function()
@@ -123,6 +124,35 @@ function M.run(test,equal)
     child.draw("Resolution","Display size",{{id="default",label="Default"}})
     assert(screen.text()~=expected)
     parent.reset(); drawParent(); equal(screen.text(),expected)
+  end)
+  test("Orbit UI: generic fields advance through a form with Enter across pages",function()
+    for _,height in ipairs({13,20,30}) do
+      local screen=terminal.new(26,height,false); local p=panel.new(screen.api,keys)
+      local items={{field=true,id="first",label="First",value="",change=function() end},
+        {field=true,id="second",label="Second",value="",change=function() end},{id="save",label="Save"}}
+      p.draw("Form","",items); equal(p.gui.focus,"first")
+      p.event("key",keys.enter); p.draw("Form","",items); equal(p.gui.focus,"second")
+      p.event("key",keys.enter); p.draw("Form","",items); equal(p.gui.focus,"save")
+      equal(p.event("key",keys.enter),"save")
+    end
+  end)
+  test("Orbit UI: controls have distinct shapes and readable semantic text colors",function()
+    local widgets=require("orbit.widgets"); local screen=terminal.new(40,30,true); local g=widgets.new(screen.api,keys)
+    g.begin("Contrast","Fields, actions and status")
+    g.field("value","Value",4,"Example",function() end)
+    g.button("action","Action",2,9,20,"action",{primary=true})
+    g.button("off","Unavailable",2,12,20,"off",{enabled=false})
+    g.text(2,16,"Warning",20,"4"); g.text(2,17,"Ready",20,"5"); g.finish()
+    assert(screen.rows[5].text:find("|",1,true)); assert(screen.rows[6].text:find("---",1,true)); assert(screen.rows[9].text:find("[",1,true)); assert(screen.rows[12].text:find("(",1,true))
+    local function luminance(value)
+      local r,g,b=math.floor(value/65536)/255,math.floor(value/256)%256/255,value%256/255
+      local function linear(c) return c<=0.04045 and c/12.92 or ((c+0.055)/1.055)^2.4 end
+      return linear(r)*0.2126+linear(g)*0.7152+linear(b)*0.0722
+    end
+    for _,row in ipairs(screen.rows) do for i=1,#row.text do if row.text:sub(i,i)~=" " then
+      local a=luminance(theme.palette[tonumber(row.fg:sub(i,i),16)+1]); local b=luminance(theme.palette[tonumber(row.bg:sub(i,i),16)+1])
+      assert((math.max(a,b)+0.05)/(math.min(a,b)+0.05)>=4.5,"Low contrast text")
+    end end end
   end)
 end
 return M

@@ -36,7 +36,16 @@ function M.new(display,keys)
     self.page=math.min(self.page,#pages); local y=4
     for index,item in ipairs(pages[self.page]) do
       if item.field then
-        g.field(item.id,item.label,y,item.value,item.change,{max=item.max or 160,numeric=item.numeric}); y=y+3
+        local enter=item.enter
+        if not enter then
+          local found=false
+          for _,candidate in ipairs(items) do
+            if found and candidate.id and candidate.enabled~=false then enter=candidate.id; break end
+            if candidate==item then found=true end
+          end
+        end
+        enter=enter or "back"
+        g.field(item.id,item.label,y,item.value,item.change,{max=item.max or 160,numeric=item.numeric,enter=enter}); y=y+3
       elseif item.text then g.text(2,y,item.text,g.size-2,item.color or "8"); y=y+1
       else
         local detail=item.description and g.height>=19
@@ -45,7 +54,7 @@ function M.new(display,keys)
         if grid then
           w=math.floor((g.size-5)/2); x=2+(index-1)%2*(w+2); y=4+math.floor((index-1)/2)*3; h=2
         end
-        g.button(item.id,item.label:sub(1,w-2),x,y,w,item.id,{height=h,enabled=item.enabled,primary=item.primary,sub=detail and item.description or nil})
+        g.button(item.id,item.label,x,y,w,item.id,{height=h,enabled=item.enabled,primary=item.primary,sub=detail and item.description or nil})
         if not grid then y=y+h+1 end
       end
     end

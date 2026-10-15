@@ -1,4 +1,4 @@
-# Orbit OS 0.4.0
+# Orbit OS 0.4.1
 
 Orbit is a desktop environment for CC:Tweaked, built on CraftOS. It includes Turtle Fleet, movable and resizable app windows, a searchable app library, wired and wireless monitor casting, and an Update Center. It runs entirely as in-game Lua. Version 0.4.0 introduces a light interface, blue accents, clearer window controls, a dock, and layouts that use the space available on each device.
 
@@ -20,6 +20,8 @@ With the optional [Orbit Display companion mod](../companion/README.md), open **
 Live companion testing confirmed 80×30 on an advanced desktop and 40×30 on an advanced wireless pocket, automatic preview rollback, desktop persistence through a game restart, and working Fleet windows at the larger size. See the companion guide for exact version requirements and validation limits.
 
 ## Desktop controls
+
+Version 0.4.1 incorporates an independent first-use review: stronger text contrast, outlined fields, bracketed buttons, darker active title bars, a visible Running tab and restore control, and a visual Programs browser. Floating windows show their name once in the title bar; full-screen apps retain their own heading. Enter advances through form fields instead of returning to the first field.
 
 | Control | Action |
 | --- | --- |
@@ -43,7 +45,11 @@ At 60 columns by 22 rows or larger, apps open in floating windows with close, mi
 
 Up to eight windows can run at once. Turtle discovery, update transfers and heartbeats continue while Orbit is open, even when Fleet or Updates is closed. Closing Orbit stops those heartbeats; active turtles pause after their connection lease expires. Changing the Fleet group stops queued updates and ends contact with the previous fleet. Fleet's existing start-job review and cancellation confirmation remain in place.
 
-**Programs** launches a CraftOS program in its own terminal window. Enter a program path, or use the default `shell` for a command prompt where you can enter arguments. These are cooperative programs sharing the same computer and filesystem, not a security sandbox. Programs that never yield can still stall the computer. Multishell-specific UI programs are not isolated from the host shell. Window positions and running programs are not restored after reboot in this release.
+**Programs** opens a visual browser of folders and Lua files. Select a file, then **Run program**. **CraftOS programs** opens the built-in tools; **Terminal** explicitly opens the command line. **Open by path** accepts a program name or path, including spaces, and Enter submits it. Programs supply their own text or graphical interface; Orbit does not turn command-line tools into GUI apps. Use Terminal when you need command arguments.
+
+While a program runs, **Stop** or F7 asks before stopping it. Closing its window uses the same confirmation. Finished programs retain their output with **Programs** (Enter/F7) to return and **Again** (F8) to rerun. Errors retain the typed path so it can be corrected. Reopening Programs resumes its existing window. The app library's **Running** tab lists existing windows on every screen size; F2 also cycles through them. Explicitly maximized windows have a visible **[R]** restore control.
+
+These are cooperative programs sharing the same computer and filesystem, not a security sandbox. Programs that never yield can still stall the computer. Multishell-specific UI programs are not isolated from the host shell. Window positions and running programs are not restored after reboot in this release.
 
 ## Cast to a monitor attached directly or by cable
 
@@ -132,7 +138,7 @@ Updates start only on request. Downgrades through the update source are rejected
 
 ## Verification and current limits
 
-All 121 test groups pass. The suite includes real release-bundle installation, desktop window behavior at native and enlarged device sizes, keyboard and mouse control, app isolation, packet validation, owner restrictions, frame ordering, touch mapping, detach/reconnect handling, checksum vectors, HTTP/local update sources, failed writes and rollback. UI checks cover app search, dock overflow, compact/desktop transitions, menu pagination, parent-screen repainting, palette restoration and themed casting. End-to-end simulations run an excavation using Fleet inside the standalone Orbit bundle while another app is focused. A rendered preview uses the actual Lua character/color buffers.
+All 129 test groups pass. The suite includes real release-bundle installation, desktop window behavior at native and enlarged device sizes, keyboard and mouse control, app isolation, packet validation, owner restrictions, frame ordering, touch mapping, detach/reconnect handling, checksum vectors, HTTP/local update sources, failed writes and rollback. UI checks cover app search, dock overflow, compact/desktop transitions, menu pagination, parent-screen repainting, palette restoration and themed casting. End-to-end simulations run an excavation using Fleet inside the standalone Orbit bundle while another app is focused. A rendered preview uses the actual Lua character/color buffers.
 
 The 0.4.0 interface was also checked in Minecraft on the 40×30 advanced pocket and 80×30 advanced desktop: app search, pocket Settings and Back navigation, live turtle discovery, window dragging, resizing, and dock restoration. Turtle #1 remained idle during these UI checks.
 

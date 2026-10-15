@@ -10,6 +10,7 @@ local releaseInfo=require("orbit.release")
 local workerRelease=require("fleet.updates")
 local resolution=require("orbit.resolution")
 local widgets=require("orbit.widgets")
+local programs=require("orbit.programs")
 local M={}
 local descriptions={resolution="Size and readability",network="Wireless connections",help="Shortcuts and controls",
   quit="Return to CraftOS",update="OS, apps and workers",turtles="Versions and progress",included="What's installed",options="More settings",
@@ -47,29 +48,8 @@ function M.definitions(o)
     app.tick=function() if o.modemCount()>0 then client.tick() end end
     return app
   end}
-  definitions[#definitions+1]={id="program",title="Programs",description="Shell and CraftOS apps",minW=26,minH=13,create=function(display,w)
-    local app=generic(display); app.path="shell"
-    function app.render()
-      if app.process then
-        if app.process.done and not app.reported then
-          local _,h=display.getSize(); surface.text(display,1,h,app.process.error or "Program finished. F10 closes."); app.reported=true
-        end
-        return
-      end
-      app.p.draw("RUN A PROGRAM","CraftOS applications",{
-        field("path","Program path",app.path,function(v) app.path=v end),
-        button("run","Run",true,true),note("Use shell for a command prompt.")})
-    end
-    function app.event(...)
-      if app.process then app.process.event(...); return end
-      local a=app.p.event(...)
-      if a=="back" then app.running=false
-      elseif a=="run" and #app.path>0 then
-        display.clear(); display.setCursorPos(1,1); w.title=app.path:match("[^/]+$") or "Program"
-        app.process=task.new(function() o.shell.run(app.path) end,display,o.term,o.shell)
-      end
-    end
-    return app
+  definitions[#definitions+1]={id="program",title="Programs",description="Browse and open Lua files",singleton=true,minW=26,minH=13,create=function(display,w)
+    return programs.new(display,o,w)
   end}
   definitions[#definitions+1]={id="network",title="Displays",description="Share a window",singleton=true,minW=26,minH=13,create=function(display)
     local app=generic(display); app.source=o.castSource; app.touch=false

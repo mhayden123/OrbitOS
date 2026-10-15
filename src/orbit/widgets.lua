@@ -8,7 +8,7 @@ function M.new(display,keys,options)
   theme.apply(display)
   local text=g.text
   function g.text(x,y,value,width,color,bg)
-    color=color=="8" and "7" or color or "f"
+    color=({["8"]="7",["3"]="b",["4"]="c",["5"]="d"})[color] or color or "f"
     if not g.color and not color:match("^[078f]$") then color="7" end
     text(x,y,value,width,color,bg)
   end
@@ -17,8 +17,14 @@ function M.new(display,keys,options)
     g.size=math.min(options.maxWidth or 68,g.width); g.left=math.floor((g.width-g.size)/2)+1
     g.rows,g.widgets={},{}
     for y=1,g.height do g.rows[y]={text=string.rep(" ",g.width),fg=string.rep("f",g.width),bg=string.rep("0",g.width)} end
-    g.text(2,1,theme.fit(theme.title(title),g.size-8),g.size-8,"f")
-    g.text(2,2,theme.fit(subtitle,g.size-2),g.size-2,"7")
+    local reserve=display._orbitHeaderReserve or 0
+    if display._orbitWindowTitle and display._orbitWindowTitle:lower()==title:lower() then
+      g.text(2,1,theme.fit(subtitle,g.size-2),g.size-2,"7")
+    else
+      g.fill(1,1,g.size,1,"f")
+      g.text(2,1,theme.fit(theme.title(title),g.size-2-reserve),g.size-2-reserve,"0","f")
+      g.text(2,2,theme.fit(subtitle,g.size-2),g.size-2,"7")
+    end
     g.text(2,g.height,g.width>=40 and "Tab to navigate  Enter to choose" or "Tab / Arrows  Enter",g.size-2,"7")
   end
   function g.finish()
@@ -30,18 +36,24 @@ function M.new(display,keys,options)
       local bg,fg="8","f"
       if not w.enabled then bg,fg="0","7"
       elseif selected then bg,fg=g.color and "b" or "f","0"
-      elseif w.primary then bg,fg=g.color and "b" or "7","0"
+      elseif w.primary then bg,fg=g.color and "9" or "8",g.color and "b" or "f"
       elseif w.danger then bg,fg=g.color and "e" or "7","0" end
       g.fill(w.x,w.y,w.width,w.height,bg)
       if w.kind=="field" then
+        bg,fg="0","f"
+        local edge=selected and (g.color and "b" or "f") or "7"
+        g.fill(w.x,w.y,w.width,w.height,bg)
         local cursor=math.min(g.cursors[w.id] or #w.value,#w.value); g.cursors[w.id]=cursor
         local offset=math.max(0,cursor-(w.width-3))
-        text(w.x,w.y,selected and ">" or " ",1,fg,bg)
+        text(w.x,w.y,selected and ">" or "|",1,edge,bg)
         text(w.x+1,w.y,w.value:sub(offset+1),w.width-2,fg,bg)
+        text(w.x+w.width-1,w.y,"|",1,edge,bg)
+        if w.height>1 then text(w.x,w.y+1,"+"..string.rep("-",w.width-2).."+",w.width,edge,bg) end
         if selected then g.cursor={x=g.left+w.x+cursor-offset,y=w.y} end
       else
-        text(w.x,w.y,selected and ">" or " ",1,fg,bg)
+        text(w.x,w.y,not w.enabled and "(" or selected and ">" or "[",1,fg,bg)
         text(w.x+1,w.y,theme.fit(w.label,w.width-2),w.width-2,fg,bg)
+        text(w.x+w.width-1,w.y,w.enabled and "]" or ")",1,fg,bg)
         if w.sub and w.height>1 then text(w.x+1,w.y+1,theme.fit(w.sub,w.width-2),w.width-2,fg,bg) end
       end
     end

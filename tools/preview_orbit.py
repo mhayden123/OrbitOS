@@ -18,13 +18,14 @@ local keys=require("orbit_tests").keys
 local frames={}
 local function capture(screen,title)
   local rows={}; for i,r in ipairs(screen.rows) do rows[i]={r.text,r.fg,r.bg} end
-  frames[#frames+1]={title=title,rows=rows,width=screen.width,height=screen.height}
+  frames[#frames+1]={title=title,rows=rows,width=screen.width,height=screen.height,color=screen.color}
 end
 local function make(width,height,color)
   local screen=terminal.new(width,height,color)
   local manager
   local config={group="workshop"}
   local options={keys=keys,version=require("orbit.release").version,id=42,boot="preview",now=function() return 0 end,config=config,
+    fs={list=function() return {"clock.lua","weather.lua"} end,isDir=function() return false end},
     modemCount=function() return 2 end,load=function() return {group="quarry"} end,save=function() end,saveConfig=function() end,
     title=function(id) local w=manager.find(id); return w and w.title end,windows=function() return manager.windows end,
     cast={streams={},targets=function() return {
@@ -37,7 +38,7 @@ local function make(width,height,color)
 end
 local screen,d,defs=make(80,30,true)
 d.render(); capture(screen,"APP LIBRARY / 80 x 30")
-local program=d.open(defs[2]); program.app.path="rom/programs/shell.lua"
+local program=d.open(defs[2]); program.app.page="path"; program.app.path="/clock.lua"
 local network=d.open(defs[3]); network.app.source=program.id
 d.geometry(program,3,3,45,20); d.geometry(network,24,7,53,21)
 d.render(); capture(screen,"FLOATING WINDOWS / 80 x 30")
@@ -68,8 +69,9 @@ for i, frame in enumerate(frames.values()):
     for row_i, row in enumerate(frame["rows"].values()):
         for col, char in enumerate(row[1]):
             cx, cy = x+col*cw, y+38+row_i*ch
-            draw.rectangle((cx,cy,cx+cw-1,cy+ch-1),fill="#"+palette[int(row[3][col],16)])
-            draw.text((cx,cy),char,font=font,fill="#"+palette[int(row[2][col],16)])
+            active_palette = palette if frame["color"] else {0: "f0f0f0", 7: "4c4c4c", 8: "999999", 15: "111111"}
+            draw.rectangle((cx,cy,cx+cw-1,cy+ch-1),fill="#"+active_palette[int(row[3][col],16)])
+            draw.text((cx,cy),char,font=font,fill="#"+active_palette[int(row[2][col],16)])
 output = ROOT / "docs/orbit-preview.png"
 sheet.save(output)
 print(output)
