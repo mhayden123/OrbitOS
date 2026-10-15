@@ -92,7 +92,7 @@ local planner = require("fleet.planner")
 local M = {}
 
 function M.new(display, keys, options)
-  local g, client = gui.new(display, keys), options.client
+  local g, client = (options.widgets or gui).new(display, keys), options.client
   local self = { gui = g, page = options.setup and "setup" or "home", history = {}, running = true,
     listPage = 1, infoPage = 1, group = client.group or "fleet", draft = {}, checked = false }
   local function go(page, reset)
@@ -175,7 +175,7 @@ function M.new(display, keys, options)
       g.finish(); return
     end
     local p, d = peer(), self.draft
-    local half = math.floor((math.min(40, width) - 5) / 2)
+    local half = math.floor((math.min(options.widgets and 68 or 40, width) - 5) / 2)
     local function pair(y, id, label, action, id2, label2, action2, enabled, enabled2, buttonHeight)
       g.button(id,label,2,y,half,action,{enabled=enabled,height=buttonHeight})
       g.button(id2,label2,half+4,y,g.size-half-4,action2,{enabled=enabled2,height=buttonHeight})
@@ -198,16 +198,32 @@ function M.new(display, keys, options)
       local online=0; for _,id in ipairs(ids) do if client.fresh(client.peers[id]) then online=online+1 end end
       g.text(2,3,online .. "/" .. #ids .. " online   " .. self.listPage .. "/" .. self.pages,g.size-2,"8")
       local first = (self.listPage-1)*self.perPage+1
+      local overview=options.widgets and g.size>=60
+      local listWidth=overview and math.floor(g.size*0.60) or g.size-2
       for index=first,math.min(#ids,first+self.perPage-1) do
         local id, entry = ids[index], client.peers[ids[index]]
         local s = entry.status
         local status = client.fresh(entry) and s.state or "OFFLINE"
         local sub = s.owner ~= client.owner and (status .. " owner #" .. s.owner) or (status .. " fuel " .. s.fuel)
-        g.button("turtle:"..id,"#"..id.." "..s.label,2,4+(index-first)*3,g.size-2,"open:"..id,{sub=sub})
+        g.button("turtle:"..id,"#"..id.." "..s.label,2,4+(index-first)*3,listWidth,"open:"..id,{sub=sub})
       end
       if #ids == 0 then
         g.paragraph(6,"Looking for turtles...",2)
         g.paragraph(10,"Use the same fleet name and a wireless modem on each turtle.",4,"8")
+      end
+      if overview and #ids>0 then
+        local x,working,attention=listWidth+5,0,0
+        for _,id in ipairs(ids) do
+          local entry=client.peers[id]
+          if client.fresh(entry) and entry.status.state=="running" then working=working+1 end
+          if not client.fresh(entry) or entry.status.state=="blocked" or entry.status.state=="paused" then attention=attention+1 end
+        end
+        g.text(x,4,"Fleet overview",g.size-x,"f")
+        g.text(x,6,online.." online",g.size-x,"d")
+        g.text(x,8,working.." working",g.size-x,"7")
+        g.text(x,10,attention.." need attention",g.size-x,attention>0 and "e" or "7")
+        g.text(x,12,"Network: "..client.group,g.size-x,"7")
+        if height>=24 then g.text(x,15,"Select a turtle",g.size-x,"7"); g.text(x,16,"to view its job.",g.size-x,"7") end
       end
       pair(height-5,"prev","< Page","prev","more","Page >","more",self.listPage>1,self.listPage<self.pages)
       pair(height-2,"setup","Setup","setup","quit","Quit","quit")

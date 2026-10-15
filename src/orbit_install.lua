@@ -4,6 +4,7 @@ local update=require("orbit.update")
 local panel=require("orbit.panel")
 local gui=require("fleet.gui")
 local ui=require("fleet.ui")
+local restorePalette=require("orbit.theme").preserve(term)
 local p=panel.new(term,keys)
 local boot,receiver=false,false
 local result,message,backup
@@ -69,6 +70,6 @@ local ok,why=pcall(function()
     end
   end
 end)
-term.setCursorBlink(false); term.setBackgroundColor(colors.black); term.setTextColor(colors.white); term.clear(); term.setCursorPos(1,1)
+restorePalette(); term.setCursorBlink(false); term.setBackgroundColor(colors.black); term.setTextColor(colors.white); term.clear(); term.setCursorPos(1,1)
 if not ok then error(why,0) end
 print(result and "Orbit installed. Run orbit to launch." or "Installer closed.")

@@ -1,6 +1,6 @@
-# Orbit OS 0.3.0
+# Orbit OS 0.4.0
 
-Orbit is a desktop environment for CC:Tweaked, built on CraftOS. It includes Turtle Fleet, movable and resizable app windows, a program launcher, wired and wireless monitor casting, and an Update Center. It runs entirely as in-game Lua.
+Orbit is a desktop environment for CC:Tweaked, built on CraftOS. It includes Turtle Fleet, movable and resizable app windows, a searchable app library, wired and wireless monitor casting, and an Update Center. It runs entirely as in-game Lua. Version 0.4.0 introduces a light interface, blue accents, clearer window controls, a dock, and layouts that use the space available on each device.
 
 ## Install
 
@@ -15,7 +15,7 @@ Use an advanced computer for mouse interaction. Basic computers support keyboard
 
 ## Screen resolution
 
-With the optional [Orbit Display companion mod](../companion/README.md), open **Settings & help → Screen resolution**. Choose Default, Balanced, More space or Custom. The enlarged computer GUI automatically fits the game window, and a 15-second confirmation restores the old size if you cannot use the new layout. Confirmed sizes persist per computer. Desktop and pocket presets are different; mouse and keyboard navigation both work. Install the companion JAR on the client and server and restart Minecraft once. Orbit's Update button updates the Lua interface, while Java companion upgrades require a Minecraft restart.
+With the optional [Orbit Display companion mod](../companion/README.md), open **Settings → Screen resolution**. Choose Default, Balanced, More space or Custom. The enlarged computer GUI automatically fits the game window, and a 15-second confirmation restores the old size if you cannot use the new layout. Confirmed sizes persist per computer. Desktop and pocket presets are different; mouse and keyboard navigation both work. Install the companion JAR on the client and server and restart Minecraft once. Orbit's Update button updates the Lua interface, while Java companion upgrades require a Minecraft restart.
 
 Live companion testing confirmed 80×30 on an advanced desktop and 40×30 on an advanced wireless pocket, automatic preview rollback, desktop persistence through a game restart, and working Fleet windows at the larger size. See the companion guide for exact version requirements and validation limits.
 
@@ -23,14 +23,15 @@ Live companion testing confirmed 80×30 on an advanced desktop and 40×30 on an 
 
 | Control | Action |
 | --- | --- |
-| Apps button or F1 | Open or hide the app launcher |
+| Apps button or F1 | Open or hide the searchable app library |
+| Type in the app library | Filter apps; arrows/Tab select and Enter opens |
 | Drag a window title | Move the window |
 | Drag its bottom edge | Resize the window |
 | Title `Cast` / F6 | Open casting for that app |
 | Title `-` | Minimize; app keeps running |
 | Title `+` / F3 | Full screen or restore |
-| Title `X` / F10 | Close the current app |
-| Taskbar button / F2 | Select or cycle apps |
+| Title `x` / F10 | Close the current app |
+| Dock button / F2 | Select or cycle apps; dock arrows reveal more apps |
 | F4, then arrows | Move with the keyboard; Enter or Escape finishes |
 | F5, then arrows | Resize with the keyboard; Enter or Escape finishes |
 | Tab/arrows and Enter | Navigate app buttons and fields |
@@ -38,9 +39,11 @@ Live companion testing confirmed 80×30 on an advanced desktop and 40×30 on an 
 | Settings → Exit Orbit | Confirm exit to CraftOS |
 | Ctrl+T | Exit Orbit immediately |
 
+At 60 columns by 22 rows or larger, apps open in floating windows with close, minimize and maximize controls on the left. Smaller screens show one full-screen app with **Apps** in the upper-right corner. Resizing the terminal switches layouts automatically while apps keep running, and restores floating window positions when space permits. Wide menus use two columns; compact menus use a single list and paginate when needed. Basic computers retain keyboard controls and a readable monochrome interface.
+
 Up to eight windows can run at once. Turtle discovery, update transfers and heartbeats continue while Orbit is open, even when Fleet or Updates is closed. Closing Orbit stops those heartbeats; active turtles pause after their connection lease expires. Changing the Fleet group stops queued updates and ends contact with the previous fleet. Fleet's existing start-job review and cancellation confirmation remain in place.
 
-**Run a program** launches a CraftOS program in its own terminal window. Enter a program path, or use the default `shell` for a command prompt where you can enter arguments. These are cooperative programs sharing the same computer and filesystem, not a security sandbox. Programs that never yield can still stall the computer. Multishell-specific UI programs are not isolated from the host shell. Window positions and running programs are not restored after reboot in this release.
+**Programs** launches a CraftOS program in its own terminal window. Enter a program path, or use the default `shell` for a command prompt where you can enter arguments. These are cooperative programs sharing the same computer and filesystem, not a security sandbox. Programs that never yield can still stall the computer. Multishell-specific UI programs are not isolated from the host shell. Window positions and running programs are not restored after reboot in this release.
 
 ## Cast to a monitor attached directly or by cable
 
@@ -78,7 +81,7 @@ https://raw.githubusercontent.com/mhayden123/OrbitOS/main/dist/orbit-release
 
 The repository is [mhayden123/OrbitOS](https://github.com/mhayden123/OrbitOS). It must be public for in-game downloads without credentials, and Minecraft's HTTP access must be enabled. No account token is stored on your computers.
 
-**Included apps** lists app versions. Managed apps are Turtle Fleet (controller), Run a program, Displays, Updates, and Settings & help. They are contained in `/orbit.lua`, so a single verified replacement updates them together. Rollback restores the whole previous OS bundle. Separate programs you copy onto the computer keep their own update mechanisms.
+**Included apps** lists app versions. Managed apps are Turtle Fleet (controller), Programs, Displays, Updates, and Settings. They are contained in `/orbit.lua`, so a single verified replacement updates them together. Rollback restores the whole previous OS bundle. Separate programs you copy onto the computer keep their own update mechanisms.
 
 **Turtle updates** shows the result for each discovered turtle assigned to this controller. Active jobs, including paused or blocked jobs, wait until completed or cancelled by you. Idle workers receive acknowledged chunks, verify size, SHA-256 and Lua syntax, retain a backup, and restart their program. **Updated** means the new version has reconnected, not just that the transfer finished. Settings and fuel are preserved; updates do not move turtles. Offline turtles must be brought back into range and updated again. Keep Orbit open and chunks loaded until the transfers finish. Closing Updates alone does not stop the transfer. **Stop queued updates** cancels waiting/partial transfers; a worker already installing may finish and restart.
 
@@ -129,7 +132,9 @@ Updates start only on request. Downgrades through the update source are rejected
 
 ## Verification and current limits
 
-The test suite includes real release-bundle installation, desktop window behavior at native device sizes, keyboard and mouse control, app isolation, packet validation, owner restrictions, frame ordering, touch mapping, detach/reconnect handling, checksum vectors, HTTP/local update sources, failed writes and rollback. End-to-end simulations run an excavation using Fleet inside the standalone Orbit bundle while another app is focused. A rendered preview uses the actual Lua character/color buffers.
+All 121 test groups pass. The suite includes real release-bundle installation, desktop window behavior at native and enlarged device sizes, keyboard and mouse control, app isolation, packet validation, owner restrictions, frame ordering, touch mapping, detach/reconnect handling, checksum vectors, HTTP/local update sources, failed writes and rollback. UI checks cover app search, dock overflow, compact/desktop transitions, menu pagination, parent-screen repainting, palette restoration and themed casting. End-to-end simulations run an excavation using Fleet inside the standalone Orbit bundle while another app is focused. A rendered preview uses the actual Lua character/color buffers.
+
+The 0.4.0 interface was also checked in Minecraft on the 40×30 advanced pocket and 80×30 advanced desktop: app search, pocket Settings and Back navigation, live turtle discovery, window dragging, resizing, and dock restoration. Turtle #1 remained idle during these UI checks.
 
 Live validation in Minecraft 26.3: controller #2 downloaded the public GitHub release with **Update everything**, installed the OS/apps, transferred Fleet 0.3.1 to turtle #1, and confirmed its restart from Fleet 0.3.0. The installed OS and worker matched the published SHA-256 hashes, backups were present, and the worker retained its fleet, assigned controller and fuel. Window dragging and resizing were exercised on the actual computer. Mining, failure recovery, and wireless casting retain simulation coverage; this live update test did not exercise every gameplay scenario.
 

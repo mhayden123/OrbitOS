@@ -9,8 +9,12 @@ local update=require("orbit.update")
 local releaseInfo=require("orbit.release")
 local workerRelease=require("fleet.updates")
 local resolution=require("orbit.resolution")
+local widgets=require("orbit.widgets")
 local M={}
-local function button(id,label,enabled,primary) return {id=id,label=label,enabled=enabled,primary=primary} end
+local descriptions={resolution="Size and readability",network="Wireless connections",help="Shortcuts and controls",
+  quit="Return to CraftOS",update="OS, apps and workers",turtles="Versions and progress",included="What's installed",options="More settings",
+  source="Pick an open app",custom="Choose columns and rows"}
+local function button(id,label,enabled,primary) return {id=id,label=label,enabled=enabled,primary=primary,description=descriptions[id]} end
 local function note(text) return {text=text} end
 local function field(id,label,value,change,numeric) return {id=id,label=label,value=value,change=change,field=true,numeric=numeric} end
 function M.definitions(o)
@@ -19,18 +23,18 @@ function M.definitions(o)
     function app.notice(text,back) app.message,app.returnPage,app.page=text,back or app.page,"message"; app.p.reset() end
     function app.messageItems()
       local w=display.getSize(); local items={}
-      for _,line in ipairs(gui.wrap(app.message,math.min(40,w)-2)) do items[#items+1]=note(line) end
+      items[1]=note(app.message)
       return items
     end
     function app.back() if app.page=="message" then app.page=app.returnPage; app.p.reset() else app.running=false end end
     return app
   end
   local definitions={}
-  definitions[#definitions+1]={id="fleet",title="Turtle Fleet",singleton=true,minW=26,minH=19,create=function(display)
+  definitions[#definitions+1]={id="fleet",title="Turtle Fleet",description="Jobs and live turtles",width=70,height=25,singleton=true,minW=26,minH=19,create=function(display)
     -- OS opens wired and wireless modems; Fleet continues using its own protocol.
     local cfg=o.load("/.fleet-controller") or {}
     local client=fleetClient.new({group=cfg.group,owner=o.id,now=o.now,boot=o.boot})
-    local app=fleetDashboard.new(display,o.keys,{client=client,setup=not cfg.group,
+    local app=fleetDashboard.new(display,o.keys,{client=client,setup=not cfg.group,widgets=widgets,
       saveGroup=function(value)
         o.save("/.fleet-controller",{group=value})
         if o.fleetUpdates then o.fleetUpdates.setGroup(value) end
@@ -43,7 +47,7 @@ function M.definitions(o)
     app.tick=function() if o.modemCount()>0 then client.tick() end end
     return app
   end}
-  definitions[#definitions+1]={id="program",title="Run a program",minW=26,minH=13,create=function(display,w)
+  definitions[#definitions+1]={id="program",title="Programs",description="Shell and CraftOS apps",minW=26,minH=13,create=function(display,w)
     local app=generic(display); app.path="shell"
     function app.render()
       if app.process then
@@ -67,7 +71,7 @@ function M.definitions(o)
     end
     return app
   end}
-  definitions[#definitions+1]={id="network",title="Displays",singleton=true,minW=26,minH=13,create=function(display)
+  definitions[#definitions+1]={id="network",title="Displays",description="Share a window",singleton=true,minW=26,minH=13,create=function(display)
     local app=generic(display); app.source=o.castSource; app.touch=false
     function app.render()
       if app.page=="message" then app.p.draw("DISPLAY NOTICE","",app.messageItems(),"Back"); return end
@@ -116,7 +120,7 @@ function M.definitions(o)
     end
     return app
   end}
-  definitions[#definitions+1]={id="updates",title="Updates",singleton=true,minW=26,minH=13,create=function(display)
+  definitions[#definitions+1]={id="updates",title="Updates",description="Keep everything current",singleton=true,minW=26,minH=13,create=function(display)
     local app=generic(display)
     local function savedSource()
       return type(o.config.updateSource)=="string" and #o.config.updateSource>0 and o.config.updateSource or releaseInfo.updateSource
@@ -253,7 +257,7 @@ function M.definitions(o)
     end
     return app
   end}
-  definitions[#definitions+1]={id="settings",title="Settings & help",singleton=true,minW=26,minH=13,create=function(display)
+  definitions[#definitions+1]={id="settings",title="Settings",description="Make Orbit your own",width=62,singleton=true,minW=26,minH=13,create=function(display)
     local app=generic(display); app.group=o.config.group
     function app.render()
       if app.resolution then app.resolution.render(); return end
@@ -265,8 +269,8 @@ function M.definitions(o)
       if app.page=="network" then app.p.draw("DISPLAY NETWORK","Used by wireless receivers",{
         field("group","Display network group",app.group,function(v) app.group=v end),button("save","Save network group"),
         note("Fleet keeps its own group settings.")},"Back"); return end
-      app.p.draw("SETTINGS & HELP","Orbit "..o.version.." / computer #"..o.id,{
-        button("resolution","Screen resolution"),button("network","Display network"),button("help","Windows & keyboard help"),button("quit","Exit Orbit")})
+      app.p.draw("SETTINGS","Orbit "..o.version.." / computer #"..o.id,{
+        button("resolution","Screen resolution"),button("network","Display network"),button("help","Keyboard & windows"),button("quit","Exit Orbit")})
     end
     function app.event(...)
       if app.resolution then
@@ -282,7 +286,7 @@ function M.definitions(o)
         if app.group:match("^[%w_-]+$") and #app.group<=32 then
           o.cast.stopAll(); o.cast.peers={}; o.config.group=app.group; o.saveConfig(); app.notice("Display network saved.")
         else app.notice("Use 1-32 letters, digits, hyphens or underscores.") end
-      elseif a=="help" then app.notice("Drag a title to move a window. Drag its bottom edge to resize. Title controls: Cast shares, - minimizes, + maximizes, X closes. F1 opens Apps; F2 switches; F3 toggles full screen; F4 moves and F5 resizes using arrows, then Enter; F6 opens casting; F10 closes the current app. Fleet uses full screen when its controls need the space. Wired monitors appear directly. Wireless displays need a receiver computer running orbit receive, with this computer's ID and matching group. Receiver taps require permission on both computers. Programs share the computer's files and use cooperative multitasking.")
+      elseif a=="help" then app.notice("Apps: click Orbit or Apps, or press F1. Type to find an app. F2 switches open apps. On larger screens, drag the title to move a window and its bottom edge to resize. The left controls close (x), minimize (-) and maximize (+). Cast shares the app. Compact screens show one app at a time. F3 toggles full screen; F4 moves and F5 resizes with arrows, then Enter; F6 opens casting; F10 closes. Forms use Tab, arrows and Enter; Ctrl+U clears a field. Other apps and Fleet connections keep running in the background.")
       elseif a=="quit" then app.page="quit"
       elseif a=="cancel" then app.page="home"
       elseif a=="exit" then o.quit() end

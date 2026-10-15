@@ -35,28 +35,27 @@ local function make(width,height,color)
   manager=desktop.new(screen.api,keys,{apps=definitions,subtitle="#42"})
   return screen,manager,definitions
 end
-local screen,d,defs=make(51,19,true)
-d.render(); capture(screen,"APP LAUNCHER / 51 x 19")
+local screen,d,defs=make(80,30,true)
+d.render(); capture(screen,"APP LIBRARY / 80 x 30")
 local program=d.open(defs[2]); program.app.path="rom/programs/shell.lua"
 local network=d.open(defs[3]); network.app.source=program.id
-d.geometry(program,2,2,29,12); d.geometry(network,15,4,35,14)
-d.render(); capture(screen,"MOVABLE WINDOWS / 51 x 19")
-d.maximize(network); d.render(); capture(screen,"WIRED + REMOTE DISPLAYS")
-local updates=d.open(defs[4]); d.maximize(updates); d.render(); capture(screen,"UPDATE CENTER")
-local pocket,p,apps=make(26,20,true)
+d.geometry(program,3,3,45,20); d.geometry(network,24,7,53,21)
+d.render(); capture(screen,"FLOATING WINDOWS / 80 x 30")
+local settings=d.open(defs[5]); d.render(); capture(screen,"SETTINGS / RESPONSIVE CARDS")
+local pocket,p,apps=make(40,30,true)
 local fleet=p.open(apps[1])
 fleet.app.event("rednet_message",7,{version=1,group="quarry",kind="status",session="7:boot",state="running",reason="Working",
   label="Granite",owner=42,revision=1,done=1872,total=4096,active=true,mining=true,fuel=6528,jobId="mine"},"turtle-fleet/1")
-p.render(); capture(pocket,"FLEET APP / POCKET 26 x 20")
+p.render(); capture(pocket,"TURTLE FLEET / POCKET 40 x 30")
+local small,s,sd=make(26,20,true); s.open(sd[4]); s.render(); capture(small,"UPDATES / CLASSIC POCKET")
 local basic,b,bd=make(51,19,false); b.open(bd[3]); b.render(); capture(basic,"BASIC COMPUTER / KEYBOARD")
 return frames
 ''')
-palette = ["f0f0f0", "f2b233", "e57fd8", "99b2f2", "dede6c", "7fcc19", "f2b2cc", "4c4c4c",
-           "999999", "4c99b2", "b266e5", "3366cc", "7f664c", "57a64e", "cc4c4c", "111111"]
+palette = [f"{int(value):06x}" for value in lua.eval('require("orbit.theme").palette').values()]
 font_path = Path("C:/Windows/Fonts/consola.ttf")
 font = ImageFont.truetype(str(font_path), 16) if font_path.exists() else ImageFont.load_default(size=16)
 cw, ch, pad, gap = 10, 20, 18, 18
-panel_w, panel_h = 51*cw+2*pad, 20*ch+60
+panel_w, panel_h = 80*cw+2*pad, 30*ch+60
 sheet = Image.new("RGB", (2*panel_w+3*gap, 3*panel_h+4*gap+32), "#141c29")
 draw = ImageDraw.Draw(sheet)
 version = json.loads((ROOT / "release.json").read_text(encoding="utf-8"))["orbitVersion"]

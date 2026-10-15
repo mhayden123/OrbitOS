@@ -10,6 +10,7 @@ local transfer=require("fleet.updates")
 local VERSION=release.version
 local args={...}
 local native=term.current()
+local restorePalette=require("orbit.theme").preserve(native)
 local width,height=native.getSize()
 assert(width>=26 and height>=13,"Orbit needs at least 26 columns and 13 rows.")
 local config=ui.load("/.orbit-config") or {}
@@ -64,6 +65,6 @@ local ok,why=pcall(function()
   updating.cancel(); casting.stopAll(); manager.stop(); os.cancelTimer(timer)
   if not success then error(problem,0) end
 end)
-term.redirect(native); native.setCursorBlink(false); native.setBackgroundColor(colors.black); native.setTextColor(colors.white); native.clear(); native.setCursorPos(1,1)
+term.redirect(native); restorePalette(); native.setCursorBlink(false); native.setBackgroundColor(colors.black); native.setTextColor(colors.white); native.clear(); native.setCursorPos(1,1)
 if not ok then error(why,0) end
 print("Orbit closed. Run orbit to return.")

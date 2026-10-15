@@ -156,7 +156,7 @@ function M.run(mouse, orbit)
   if orbit then
     local k=require("orbit_tests").keys
     world.push(42,"key",k.f1); world.push(42,"key",k.down); world.push(42,"key",k.down); world.push(42,"key",k.enter)
-    world.untilTrue(function() return controller.screen.text():find("DISPLAYS",1,true) end)
+    world.untilTrue(function() return controller.screen.text():lower():find("displays",1,true) end)
   end
   local function completed()
     for _,packet in ipairs(world.packets) do

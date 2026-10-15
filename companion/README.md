@@ -6,7 +6,7 @@ A Fabric companion for **Minecraft 26.3 and CC:Tweaked 1.120.3**. It adds per-co
 
 1. Put [`orbit-display-0.1.0+mc26.3.jar`](../dist/orbit-display-0.1.0+mc26.3.jar) in the Minecraft instance's `mods` directory. For multiplayer, install it on the server and on every client using these computers.
 2. Restart Minecraft/the server. This is required for a new Java mod.
-3. Update Orbit OS, then open **Apps → Settings & help → Screen resolution**.
+3. Update Orbit OS, then open **Apps → Settings → Screen resolution**.
 4. Pick Default, Balanced, More space, or Custom. Select **Keep resolution** within 15 seconds. Otherwise the server restores the previous size, including when the Lua program is closed or crashes.
 
 Balanced is 80×30 on desktops and 40×30 on pockets. More space is 100×36 or 52×36 respectively. Custom sizes allow 26–160 columns and 13–60 rows. Larger grids make text physically smaller. The client fits the entire computer GUI into the game window and translates clicks, dragging and scrolling into the same logical coordinates. Minecraft's global GUI scale is not modified.

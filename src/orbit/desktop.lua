@@ -1,16 +1,20 @@
 local surface=require("orbit.surface")
+local theme=require("orbit.theme")
 local M={}
 local function clamp(v,lo,hi) return math.max(lo,math.min(hi,v)) end
+local function inside(x,y,r) return x>=r.x and x<r.x+r.w and y>=r.y and y<r.y+r.h end
 function M.new(display,keys,options)
   options=options or {}
   local width,height=display.getSize()
-  local self={windows={},nextId=0,launcher=true,menu=1,running=true,width=width,height=height,keys=keys}
+  local self={windows={},nextId=0,launcher=true,menu=1,query="",running=true,width=width,height=height,keys=keys}
+  local restorePalette=theme.apply(display)
   local canvas=surface.new(width,height,display.isColor())
+  local function compact() return self.width<60 or self.height<22 end
   local function find(id) for i,w in ipairs(self.windows) do if w.id==id then return w,i end end end
   self.find=find
   function self.focus(id)
     local w,i=find(id); if not w then return end
-    table.remove(self.windows,i); self.windows[#self.windows+1]=w; w.hidden=false; self.focused=id
+    table.remove(self.windows,i); self.windows[#self.windows+1]=w; w.hidden=false; self.focused=id; self.dockPage=nil
   end
   local function invoke(w,method,...)
     if not w.app or not w.app[method] then return end
@@ -18,22 +22,27 @@ function M.new(display,keys,options)
     if not ok then w.error=tostring(why); if w.app.close then pcall(w.app.close) end; w.app={} end
   end
   local function resize(w)
-    local sw,sh=w.full and self.width or w.w,w.full and self.height or w.h-2
-    if w.surface.width~=sw or w.surface.height~=sh then
-      w.surface.resize(sw,sh); invoke(w,"event","term_resize")
-    end
+    w.full=w.maximized or compact() or self.width<w.minW+4 or self.height<w.minH+4
+    local sw,sh=w.full and self.width or w.w-2,w.full and self.height or w.h-2
+    if w.surface.width~=sw or w.surface.height~=sh then w.surface.resize(sw,sh); invoke(w,"event","term_resize") end
+  end
+  function self.geometry(w,x,y,ww,hh)
+    if w.full then return end
+    w.w=clamp(ww,w.minW+2,self.width-2); w.h=clamp(hh,w.minH+2,self.height-3)
+    w.x=clamp(x,1,self.width-w.w); w.y=clamp(y,2,self.height-w.h-1)
+    resize(w)
   end
   function self.open(definition)
+    if not definition then return end
     if definition.singleton then for _,w in ipairs(self.windows) do if w.kind==definition.id then self.focus(w.id); self.launcher=false; return w end end end
-    if #self.windows>=8 then return nil,"Close a window first (maximum eight)." end
+    if #self.windows>=8 then self.notice="Eight windows open. Close one to continue."; return end
     self.nextId=self.nextId+1
     local w={id=self.nextId,kind=definition.id,title=definition.title,minW=definition.minW or 26,minH=definition.minH or 10,
-      x=2+(self.nextId-1)%3,y=2+(self.nextId-1)%2,w=math.min(38,self.width-2),h=math.min(14,self.height-3)}
-    w.full=self.width<w.minW+2 or self.height<w.minH+5
-    w.w=clamp(w.w,w.minW,self.width); w.h=clamp(w.h,w.minH+2,self.height)
-    w.x=clamp(w.x,1,self.width-w.w+1); w.y=clamp(w.y,2,self.height-w.h)
-    w.surface=surface.new(w.full and self.width or w.w,w.full and self.height or w.h-2,display.isColor())
-    self.windows[#self.windows+1]=w; self.focused=w.id; self.launcher=false
+      x=3+(self.nextId-1)%3*3,y=3+(self.nextId-1)%3,w=math.min(definition.width or 58,self.width-6),h=math.min(definition.height or 23,self.height-5)}
+    w.w=math.max(w.minW+2,w.w); w.h=math.max(w.minH+2,w.h)
+    w.surface=surface.new(1,1,display.isColor()); resize(w)
+    if not w.full then self.geometry(w,w.x,w.y,w.w,w.h) end
+    self.windows[#self.windows+1]=w; self.focused=w.id; self.launcher=false; self.notice=nil; self.dockPage=nil
     local ok,app=pcall(definition.create,w.surface.term,w)
     if ok then w.app=app else w.error=tostring(app); w.app={} end
     return w
@@ -41,168 +50,213 @@ function M.new(display,keys,options)
   function self.close(id)
     local w,i=find(id); if not w then return end
     invoke(w,"close"); if options.closed then options.closed(id) end
-    table.remove(self.windows,i); self.focused=self.windows[#self.windows] and self.windows[#self.windows].id
+    table.remove(self.windows,i); self.focused=nil
+    for j=#self.windows,1,-1 do if not self.windows[j].hidden then self.focused=self.windows[j].id; break end end
     if not self.focused then self.launcher=true end
   end
-  function self.maximize(w)
-    if not w then return end
-    if w.full and self.width>=w.minW+2 and self.height>=w.minH+5 then w.full=false else w.full=true end
-    resize(w)
-  end
-  function self.geometry(w,x,y,ww,hh)
-    if w.full then return end
-    w.w=clamp(ww,w.minW,self.width); w.h=clamp(hh,w.minH+2,self.height-2)
-    w.x=clamp(x,1,self.width-w.w+1); w.y=clamp(y,2,self.height-w.h)
-    resize(w)
-  end
+  function self.maximize(w) if w then w.maximized=not w.maximized; resize(w) end end
   function self.appInput(id,...)
     local w=find(id); if w then invoke(w,"event",...); if w.app.running==false then self.close(id) end end
   end
   function self.tick()
-    local copy={table.unpack(self.windows)}
-    for _,w in ipairs(copy) do invoke(w,"tick"); if w.app.running==false then self.close(w.id) end end
+    for _,w in ipairs({table.unpack(self.windows)}) do invoke(w,"tick"); if w.app.running==false then self.close(w.id) end end
   end
+  local function launcherLayout()
+    local mw=math.min(66,self.width-2); local cols=self.width>=60 and 2 or 1
+    local mh=math.min(self.height-2,23)
+    local box={x=math.floor((self.width-mw)/2)+1,y=math.floor((self.height-mh)/2)+1,w=mw,h=mh}
+    local matches={}
+    for _,app in ipairs(options.apps or {}) do
+      if (app.title.." "..(app.description or "")):lower():find(self.query:lower(),1,true) then matches[#matches+1]=app end
+    end
+    local stride=mh>=22 and 3 or mh>=18 and 2 or 1
+    local capacity=math.max(cols,math.floor((mh-7)/stride)*cols)
+    self.menu=clamp(self.menu,1,math.max(1,#matches))
+    local first=math.floor((self.menu-1)/capacity)*capacity+1
+    local cw=math.floor((mw-4-(cols-1)*2)/cols); local cards={}
+    for i=first,math.min(#matches,first+capacity-1) do
+      local n=i-first
+      cards[#cards+1]={x=box.x+2+n%cols*(cw+2),y=box.y+5+math.floor(n/cols)*stride,w=cw,h=stride==3 and 2 or 1,index=i,app=matches[i]}
+    end
+    return box,cards,matches,cols
+  end
+  self.launcherLayout=launcherLayout
+  local function dockLayout()
+    local ordered={table.unpack(self.windows)}; table.sort(ordered,function(a,b) return a.id<b.id end)
+    local slots=math.max(1,math.floor((self.width-16)/12)); local current=1
+    for i,w in ipairs(ordered) do if w.id==self.focused then current=i end end
+    local pages=math.max(1,math.ceil(#ordered/slots))
+    local page=clamp(self.dockPage or math.floor((current-1)/slots)+1,1,pages)
+    local first=(page-1)*slots+1
+    local result={{x=2,y=self.height,w=7,h=1,apps=true}}
+    for i=first,math.min(#ordered,first+slots-1) do result[#result+1]={x=10+(i-first)*12,y=self.height,w=11,h=1,window=ordered[i]} end
+    if pages>1 then
+      result[#result+1]={x=self.width-5,y=self.height,w=2,h=1,page=(page-2)%pages+1,label="<"}
+      result[#result+1]={x=self.width-2,y=self.height,w=2,h=1,page=page%pages+1,label=">"}
+    end
+    return result
+  end
+  self.dockLayout=dockLayout
   function self.event(event,a,b,c,...)
     if event=="term_resize" then
-      self.width,self.height=display.getSize(); canvas.resize(self.width,self.height)
-      for _,w in ipairs(self.windows) do
-        if self.width<w.minW+2 or self.height<w.minH+5 then w.full=true end
-        if w.full then resize(w) else self.geometry(w,w.x,w.y,w.w,w.h) end
-      end
+      self.width,self.height=display.getSize(); canvas.resize(self.width,self.height); self.drag=nil; self.mode=nil
+      for _,w in ipairs(self.windows) do resize(w); if not w.full then self.geometry(w,w.x,w.y,w.w,w.h) end end
       return
     end
     local w=find(self.focused)
     if event=="key" and not b then
-      if a==keys.f1 then self.launcher=not self.launcher; self.mode=nil; return
-      elseif a==keys.f2 then
-        local first=self.windows[1]; if first then self.focus(first.id) end; self.launcher=false; return
-      elseif a==keys.f3 then self.maximize(w); return
-      elseif a==keys.f4 then self.mode="move"; return
-      elseif a==keys.f5 then self.mode="size"; return
-      elseif a==keys.f6 and w then if options.cast then options.cast(w.id) end; return
-      elseif a==keys.f10 and w then self.close(w.id); return end
+      if a==keys.f1 then self.launcher=not self.launcher; self.mode=nil; self.drag=nil; self.query=""; self.menu=1; return
+      elseif a==keys.f2 then local first=self.windows[1]; if first then self.focus(first.id); self.launcher=false end; return
+      elseif not self.launcher then
+        if a==keys.f3 then self.maximize(w); return
+        elseif a==keys.f4 then self.mode=w and not w.full and "move" or nil; return
+        elseif a==keys.f5 then self.mode=w and not w.full and "size" or nil; return
+        elseif a==keys.f6 and w then if options.cast then options.cast(w.id) end; return
+        elseif a==keys.f10 and w then self.close(w.id); return end
+      end
     end
     if self.mode and w then
       if event=="key" then
         if a==keys.enter or a==keys.escape then self.mode=nil
         else
-          local dx=a==keys.left and -1 or a==keys.right and 1 or 0
-          local dy=a==keys.up and -1 or a==keys.down and 1 or 0
-          self.geometry(w,w.x+(self.mode=="move" and dx or 0),w.y+(self.mode=="move" and dy or 0),
-            w.w+(self.mode=="size" and dx or 0),w.h+(self.mode=="size" and dy or 0))
+          local dx=a==keys.left and -1 or a==keys.right and 1 or 0; local dy=a==keys.up and -1 or a==keys.down and 1 or 0
+          self.geometry(w,w.x+(self.mode=="move" and dx or 0),w.y+(self.mode=="move" and dy or 0),w.w+(self.mode=="size" and dx or 0),w.h+(self.mode=="size" and dy or 0))
         end
       end
       return
     end
+    -- The dock stays visible outside the app library, so its controls remain active.
+    if event=="mouse_click" and a==1 and c==self.height and not (w and w.full and not w.hidden) then
+      for _,hit in ipairs(dockLayout()) do if inside(b,c,hit) then
+        if hit.apps then self.launcher=not self.launcher; self.query=""; self.menu=1
+        elseif hit.page then self.dockPage=hit.page
+        else self.focus(hit.window.id); self.launcher=false end
+        return
+      end end
+      return
+    end
     local input=event=="key" or event=="key_up" or event=="char" or event=="paste" or event:match("^mouse_") or event=="terminate"
     if self.launcher and input then
-      local apps=options.apps or {}
+      local box,cards,matches,cols=launcherLayout()
       if event=="key" then
-        if a==keys.down or a==keys.tab then self.menu=self.menu%#apps+1
-        elseif a==keys.up then self.menu=(self.menu-2)%#apps+1
-        elseif a==keys.escape then self.launcher=false
-        elseif a==keys.enter then self.open(apps[self.menu]) end
-      elseif event=="mouse_click" and a==1 and b>=2 and b<=math.min(30,self.width-1) and c>=4 and c<4+#apps then
-        self.menu=c-3; self.open(apps[self.menu])
+        if a==keys.escape then if #self.query>0 then self.query=""; self.menu=1 else self.launcher=false end
+        elseif a==keys.backspace then self.query=self.query:sub(1,-2); self.menu=1
+        elseif a==keys.enter and not b then self.open(matches[self.menu])
+        elseif #matches>0 then
+          local delta=(a==keys.down and cols or a==keys.up and -cols or a==keys.tab and 1 or a==keys.right and 1 or a==keys.left and -1 or 0)
+          self.menu=(self.menu-1+delta)%#matches+1
+        end
+      elseif event=="char" or event=="paste" then self.query=(self.query..tostring(a):gsub("[%z\1-\31\127-\255]","")):sub(1,32); self.menu=1
+      elseif event=="mouse_scroll" then self.menu=clamp(self.menu+a,1,math.max(1,#matches))
+      elseif event=="mouse_click" and a==1 then
+        for _,card in ipairs(cards) do if inside(b,c,card) then self.menu=card.index; self.open(card.app); return end end
+        if c==box.y and b==box.x+box.w-2 then self.launcher=false
+        elseif not inside(b,c,box) then self.launcher=false end
       end
       return
     end
     if event=="mouse_click" and a==1 then
-      if w and w.full then
-        if c==1 and b>=self.width-5 then self.launcher=true else self.appInput(w.id,event,a,b,c) end
-        return
-      end
-      if c==1 and b<=7 then self.launcher=true; return end
-      if c==self.height then
-        local slot=math.floor((b-1)/10)+1; local target=self.windows[slot]
-        if target then self.focus(target.id) end; return
-      end
+      if c==1 and (b<=7 and not (w and w.full) or b>=self.width-5 and w and w.full) then self.launcher=true; self.query=""; self.menu=1; return end
+      if w and w.full then self.appInput(w.id,event,a,b,c); return end
       for i=#self.windows,1,-1 do
         local hit=self.windows[i]
-        if not hit.hidden and b>=hit.x and b<hit.x+hit.w and c>=hit.y and c<hit.y+hit.h then
+        if not hit.hidden and inside(b,c,hit) then
           self.focus(hit.id); w=hit
           if c==w.y then
-            local offset=w.x+w.w-1-b
-            if offset==0 then self.close(w.id)
-            elseif offset==2 then self.maximize(w)
-            elseif offset==4 then w.hidden=true; self.focused=nil; self.launcher=true
-            elseif offset>=6 and offset<=10 then if options.cast then options.cast(w.id) end
+            local offset=b-w.x
+            if offset==1 then self.close(w.id)
+            elseif offset==3 then w.hidden=true; self.focused=nil; self.launcher=true
+            elseif offset==5 then self.maximize(w)
+            elseif offset>=w.w-7 then if options.cast then options.cast(w.id) end
             else self.drag={id=w.id,x=b,y=c,wx=w.x,wy=w.y,ww=w.w,wh=w.h,mode="move"} end
           elseif c==w.y+w.h-1 then self.drag={id=w.id,x=b,y=c,wx=w.x,wy=w.y,ww=w.w,wh=w.h,mode="size"}
-          else self.appInput(w.id,event,a,b-w.x+1,c-w.y) end
+          elseif b>w.x and b<w.x+w.w-1 then self.appInput(w.id,event,a,b-w.x,c-w.y) end
           return
         end
       end
       return
     elseif event=="mouse_drag" and self.drag then
       local d=self.drag; local target=find(d.id)
-      if target then self.geometry(target,d.wx+(d.mode=="move" and b-d.x or 0),d.wy+(d.mode=="move" and c-d.y or 0),
-        d.ww+(d.mode=="size" and b-d.x or 0),d.wh+(d.mode=="size" and c-d.y or 0)) end
+      if target then self.geometry(target,d.wx+(d.mode=="move" and b-d.x or 0),d.wy+(d.mode=="move" and c-d.y or 0),d.ww+(d.mode=="size" and b-d.x or 0),d.wh+(d.mode=="size" and c-d.y or 0)) end
       return
     elseif event=="mouse_up" and self.drag then self.drag=nil; return end
     if input then
-      if w then
+      if w and not w.hidden then
         if event:match("^mouse_") and not w.full then
-          if b<w.x or b>=w.x+w.w or c<=w.y or c>=w.y+w.h-1 then return end
-          b,c=b-w.x+1,c-w.y
+          if b<=w.x or b>=w.x+w.w-1 or c<=w.y or c>=w.y+w.h-1 then return end
+          b,c=b-w.x,c-w.y
         end
         self.appInput(w.id,event,a,b,c,...)
       end
-    else
-      local copy={table.unpack(self.windows)}
-      for _,app in ipairs(copy) do self.appInput(app.id,event,a,b,c,...) end
-    end
+    else for _,app in ipairs({table.unpack(self.windows)}) do self.appInput(app.id,event,a,b,c,...) end end
   end
   function self.render()
-    -- A main-thread peripheral/API call can resize the terminal while another
-    -- coroutine is waiting. Reconcile before drawing, even if its event was filtered.
     local actualWidth,actualHeight=display.getSize()
     if actualWidth~=self.width or actualHeight~=self.height then self.event("term_resize") end
     local t=canvas.term; t.setBackgroundColor(32768); t.clear()
-    -- Hidden windows still render into their buffers for live monitor casting.
+    local function text(x,y,value,fg,bg) surface.text(t,x,y,value,2^tonumber(fg or "f",16),2^tonumber(bg or "0",16)) end
+    local function fill(x,y,w,h,bg) for row=y,y+h-1 do text(x,row,string.rep(" ",math.max(0,w)),"f",bg) end end
     for _,w in ipairs(self.windows) do
       invoke(w,"render")
-      if w.error then w.surface.term.clear(); surface.text(w.surface.term,1,1,"App stopped. F10 closes."); surface.text(w.surface.term,1,3,w.error) end
+      if w.error then w.surface.term.clear(); surface.text(w.surface.term,2,2,"This app stopped."); surface.text(w.surface.term,2,4,w.error); surface.text(w.surface.term,2,6,"F10 closes the window.") end
     end
-    surface.text(t,1,1,("[Apps] ORBIT OS  "..(options.subtitle or "")):sub(1,self.width),1,128)
+    fill(1,1,self.width,1,"8"); text(2,1,"Orbit", "f","8")
+    text(10,1,"Workspace", "7","8"); text(self.width-#(options.subtitle or "")-1,1,options.subtitle or "","7","8")
+    text(math.max(2,math.floor((self.width-8)/2)),math.floor(self.height/2),"O R B I T","8","f")
     local function draw(w)
-      local x,y=w.full and 1 or w.x,w.full and 1 or w.y+1
+      local x,y=w.full and 1 or w.x+1,w.full and 1 or w.y+1
       if not w.full then
-        local bar=(w.title..string.rep(" ",w.w)):sub(1,w.w-11).."Cast  - + X"
-        surface.text(t,w.x,w.y,bar,1,w.id==self.focused and 512 or 128)
+        fill(w.x+1,w.y+1,w.w,w.h,"7"); fill(w.x,w.y,w.w,w.h,"8")
+        text(w.x+1,w.y,"x", "e","8"); text(w.x+3,w.y,"-","c","8"); text(w.x+5,w.y,"+","d","8")
+        text(w.x+8,w.y,theme.fit(w.title,w.w-17),w.id==self.focused and "f" or "7","8")
+        text(w.x+w.w-7,w.y," Cast ","7","8"); text(w.x+w.w-2,w.y+w.h-1,"/","7","8")
       end
       for row=1,w.surface.height do t.setCursorPos(x,y+row-1); t.blit(w.surface.term.getLine(row)) end
-      if not w.full then surface.text(t,w.x,w.y+w.h-1,("Drag here to resize"..string.rep(" ",w.w)):sub(1,w.w-1).."/",256,128) end
     end
     local focused=find(self.focused)
-    if focused and focused.full then draw(focused); surface.text(t,self.width-5,1," Apps ",1,128)
+    if focused and focused.full and not focused.hidden then draw(focused); text(self.width-5,1," Apps ","f","8")
     else
       for _,w in ipairs(self.windows) do if not w.hidden then draw(w) end end
-      for i,w in ipairs(self.windows) do surface.text(t,(i-1)*10+1,self.height,(w.title.."        "):sub(1,9),1,w.id==self.focused and 512 or 128) end
+      fill(1,self.height,self.width,1,"8")
+      for _,hit in ipairs(dockLayout()) do
+        local label=hit.apps and " Apps " or hit.label or theme.fit(hit.window.title,hit.w-2)
+        local active=hit.window and hit.window.id==self.focused
+        fill(hit.x,hit.y,hit.w,1,active and "b" or "8"); text(hit.x,hit.y," "..label,active and "0" or "f",active and "b" or "8")
+      end
     end
-    if self.mode then surface.text(t,1,self.height,"Arrows: "..self.mode.." | Enter: done",1,128) end
+    if self.mode then fill(1,self.height,self.width,1,"8"); text(2,self.height,"Arrows to "..self.mode.."   Enter to finish","f","8") end
     if self.launcher then
-      local mw=math.min(30,self.width-2)
-      for y=2,math.min(self.height-1,5+#(options.apps or {})) do surface.text(t,2,y,string.rep(" ",mw),1,128) end
-      surface.text(t,3,2,"ORBIT / APPS",1,128)
-      for i,app in ipairs(options.apps or {}) do surface.text(t,2,3+i,((i==self.menu and "> " or "  ")..app.title..string.rep(" ",mw)):sub(1,mw),1,i==self.menu and 512 or 128) end
-      surface.text(t,3,5+#(options.apps or {}),"F1 menu  F2 switch",1,128)
+      local box,cards,matches=launcherLayout()
+      fill(box.x+1,box.y+1,box.w,box.h,"7"); fill(box.x,box.y,box.w,box.h,"0")
+      text(box.x+2,box.y,"Orbit", "f","0"); text(box.x+box.w-2,box.y,"x","7","0")
+      text(box.x+2,box.y+1,theme.fit(self.notice or "A place for every task",box.w-4),"7","0")
+      fill(box.x+2,box.y+3,box.w-4,1,"8"); text(box.x+3,box.y+3,theme.fit(#self.query>0 and self.query or "Type to find an app",box.w-6),"7","8")
+      for _,card in ipairs(cards) do
+        local selected=card.index==self.menu; local bg=selected and "b" or "9"; local fg=selected and "0" or "f"
+        if not display.isColor() then bg=selected and "f" or "8" end
+        fill(card.x,card.y,card.w,card.h,bg)
+        text(card.x,card.y,(selected and "> " or "  ")..theme.fit(card.app.title,card.w-3),fg,bg)
+        if card.h>1 then text(card.x+2,card.y+1,theme.fit(card.app.description or "Open app",card.w-3),selected and "0" or "7",bg) end
+      end
+      if #matches==0 then text(box.x+2,box.y+5,"No matching apps.","7","0") end
+      text(box.x+2,box.y+box.h-1,theme.fit("Arrows / Enter   F2 switch",box.w-4),"7","0")
     end
     display.setCursorBlink(false)
     local grayscale=function(value) return (value:gsub("[^078f]","7")) end
     for y=1,self.height do
-      local text,fg,bg=t.getLine(y)
-      if not display.isColor() then fg,bg=grayscale(fg),grayscale(bg) end
-      display.setCursorPos(1,y); display.blit(text,fg,bg)
+      local line,fg,bg=t.getLine(y); if not display.isColor() then fg,bg=grayscale(fg),grayscale(bg) end
+      display.setCursorPos(1,y); display.blit(line,fg,bg)
     end
-    if focused and not self.launcher and focused.surface.blink then
+    if focused and not focused.hidden and not self.launcher and focused.surface.blink then
       local s=focused.surface
-      if s.x>=1 and s.x<=s.width and s.y>=1 and s.y<=s.height then
-        display.setCursorPos((focused.full and 0 or focused.x-1)+s.x,(focused.full and 0 or focused.y)+s.y); display.setCursorBlink(true)
-      end
+      if s.x>=1 and s.x<=s.width and s.y>=1 and s.y<=s.height then display.setCursorPos((focused.full and 0 or focused.x)+s.x,(focused.full and 0 or focused.y)+s.y); display.setCursorBlink(true) end
     end
   end
-  function self.stop() local ids={}; for _,w in ipairs(self.windows) do ids[#ids+1]=w.id end; for _,id in ipairs(ids) do self.close(id) end; self.running=false end
+  function self.stop()
+    local ids={}; for _,w in ipairs(self.windows) do ids[#ids+1]=w.id end
+    for _,id in ipairs(ids) do self.close(id) end
+    restorePalette(); self.running=false
+  end
   return self
 end
 return M
