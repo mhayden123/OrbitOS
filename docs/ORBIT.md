@@ -104,7 +104,7 @@ orbit-release/
 
 Copy that directory onto an in-game disk as `/disk/orbit-release`, or into another directory visible to the controller. In **Updates → Update options → Change update source**, enter the directory and save it, then select **Update everything**. Only the controller needs the release files. A local Windows folder is not directly visible to an in-game computer: copy it into the world's ComputerCraft filesystem or transfer it using the server's supported method.
 
-The updater checks the release's SHA-256 checksum and Lua syntax, verifies the staged write, and retains the previous `/orbit.lua` under a numbered backup name. Fleet settings are untouched; Orbit saves update source/history separately from the bundle. **Rollback previous update** restores the previous program after confirmation, retaining another backup of the replaced version. Updates take effect the next time you close Orbit and run `orbit` again.
+The updater checks the release's SHA-256 checksum and Lua syntax, verifies the staged write, and retains the previous `/orbit.lua` under a numbered backup name. Fleet settings are untouched; Orbit saves update source/history separately from the bundle. **Restore previous OS** restores the previous program after confirmation, retaining another backup of the replaced version. OS updates take effect the next time you close Orbit and run `orbit` again.
 
 ## Updates from GitHub
 
@@ -115,7 +115,7 @@ https://raw.githubusercontent.com/OWNER/REPO/main/orbit-release
 https://github.com/OWNER/REPO/releases/download/v0.1.1
 ```
 
-These are templates: replace OWNER, REPO and the version with your own. A `github.com/.../blob/...` directory is normalized to its raw content URL. The manifest URL itself is accepted too. Commit both files from the same build together; a mismatch is rejected. A release arriving during a check can produce a checksum mismatch; simply retry Update.
+These are templates: replace OWNER, REPO and the version with your own. A `github.com/.../blob/...` directory is normalized to its raw content URL. The manifest URL itself is accepted too. Commit all release files from the same build together; a mismatch is rejected. A release arriving during a check can produce a checksum mismatch; simply retry Update.
 
 Private repositories requiring credentials are not supported. The server must allow HTTPS requests. Checksums detect damaged or mismatched downloads; they do not authenticate a publisher who controls both manifest and file. Choose an update URL you trust.
 
@@ -124,6 +124,8 @@ Updates start only on request. Downgrades through the update source are rejected
 ## Verification and current limits
 
 The test suite includes real release-bundle installation, desktop window behavior at native device sizes, keyboard and mouse control, app isolation, packet validation, owner restrictions, frame ordering, touch mapping, detach/reconnect handling, checksum vectors, HTTP/local update sources, failed writes and rollback. End-to-end simulations run an excavation using Fleet inside the standalone Orbit bundle while another app is focused. A rendered preview uses the actual Lua character/color buffers.
+
+Live validation in Minecraft 26.3: controller #2 downloaded the public GitHub release with **Update everything**, installed the OS/apps, transferred Fleet 0.3.1 to turtle #1, and confirmed its restart from Fleet 0.3.0. The installed OS and worker matched the published SHA-256 hashes, backups were present, and the worker retained its fleet, assigned controller and fuel. Window dragging and resizing were exercised on the actual computer. Mining, failure recovery, and wireless casting retain simulation coverage; this live update test did not exercise every gameplay scenario.
 
 This release does not include a file manager, encrypted networking, automatic app discovery/installation, saved window sessions, or migration of running programs to another computer. Casting mirrors a program that continues executing on the sender. Updates cover Orbit, bundled apps and assigned workers; standalone Fleet controllers still use the Fleet installer.
 
