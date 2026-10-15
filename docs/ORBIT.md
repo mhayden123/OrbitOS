@@ -1,4 +1,4 @@
-# Orbit OS 0.1.1
+# Orbit OS 0.2.0
 
 Orbit is a desktop environment for CC:Tweaked, built on CraftOS. It includes Turtle Fleet, movable and resizable app windows, a program launcher, wired and wireless monitor casting, and an Update Center. It runs entirely as in-game Lua.
 
@@ -20,9 +20,9 @@ Use an advanced computer for mouse interaction. Basic computers support keyboard
 | Apps button or F1 | Open or hide the app launcher |
 | Drag a window title | Move the window |
 | Drag its bottom edge | Resize the window |
-| Title `C` / F6 | Open casting for that app |
-| Title `_` | Minimize; app keeps running |
-| Title `^` / F3 | Full screen or restore |
+| Title `Cast` / F6 | Open casting for that app |
+| Title `-` | Minimize; app keeps running |
+| Title `+` / F3 | Full screen or restore |
 | Title `X` / F10 | Close the current app |
 | Taskbar button / F2 | Select or cycle apps |
 | F4, then arrows | Move with the keyboard; Enter or Escape finishes |
@@ -32,15 +32,15 @@ Use an advanced computer for mouse interaction. Basic computers support keyboard
 | Settings → Exit Orbit | Confirm exit to CraftOS |
 | Ctrl+T | Exit Orbit immediately |
 
-Up to eight windows can run at once. Turtle discovery and heartbeats continue when Fleet is behind another app. Closing Fleet or Orbit stops those heartbeats; active turtles pause after their connection lease expires. Fleet's existing start-job review and cancellation confirmation remain in place.
+Up to eight windows can run at once. Turtle discovery, update transfers and heartbeats continue while Orbit is open, even when Fleet or Updates is closed. Closing Orbit stops those heartbeats; active turtles pause after their connection lease expires. Changing the Fleet group stops queued updates and ends contact with the previous fleet. Fleet's existing start-job review and cancellation confirmation remain in place.
 
 **Run a program** launches a CraftOS program in its own terminal window. Enter a program path, or use the default `shell` for a command prompt where you can enter arguments. These are cooperative programs sharing the same computer and filesystem, not a security sandbox. Programs that never yield can still stall the computer. Multishell-specific UI programs are not isolated from the host shell. Window positions and running programs are not restored after reboot in this release.
 
 ## Cast to a monitor attached directly or by cable
 
 1. Attach a monitor, or connect the computer and monitor using wired modems and networking cable. Enable peripheral sharing on the monitor's wired modem.
-2. Open the app you want to display. Press **F6** or click **C** in its title bar.
-3. In **Displays & network**, verify the selected app. Enable **Allow monitor taps** if you want interaction.
+2. Open the app you want to display. Press **F6** or click **Cast** in its title bar.
+3. In **Displays**, verify the selected app, or use **Choose an app**. Open **Connection help & options** and turn **Monitor taps: On** if you want interaction.
 4. Select a monitor. On short windows, use **More** to reach the display list.
 
 The app is mirrored to the monitor and keeps running when its window is hidden. Larger monitors center the app; smaller monitors are rejected with a size explanation instead of clipping controls. Enlarge the monitor or reduce its text scale. For a directly accessible monitor you can set its scale in CraftOS with `lua`, followed by `peripheral.wrap("monitor_0").setTextScale(0.5)` using its actual peripheral name. **Stop all casts** ends sharing.
@@ -54,7 +54,7 @@ A wireless display needs a receiving computer connected to its monitor. Both com
 1. Install Orbit on the receiver and choose **Display receiver**, or run `orbit receive`.
 2. Enter the **sender's computer ID** and matching **display network group** (default `orbit`). Set whether receiver-side monitor taps are allowed.
 3. Choose **Start receiver**. This choice is saved, so receiver mode resumes after restart. **Stop receiving** disables it again.
-4. On the sender, open **Displays & network**. The receiver appears as `#ID label / monitor_name`. Select the app and target.
+4. On the sender, open **Displays**. The receiver appears as `#ID label / monitor_name`. Select the app and target.
 
 The receiver has a **Monitors: text scale 0.5** button. A receiver may expose several attached or wired monitors; different apps may be cast to different targets. Sender and receiver must both allow taps for remote input. Display streams update at up to four frames per second, refresh unchanged frames periodically, and blank to a disconnected message after eight seconds without contact. Frames are limited to 12,000 cells.
 
@@ -62,9 +62,9 @@ The same display protocol uses wired, wireless, and Ender modems. Wired and wire
 
 The owner ID and group avoid accidental cross-control; they are **not cryptographic authentication**. Rednet permits impersonation and eavesdropping, so use casting on networks with trusted players. See [Rednet's security model](https://tweaked.cc/module/rednet.html).
 
-## One-button OS and app updates
+## One-button OS, app and turtle updates
 
-Open **Apps → Update Center → Update OS + apps**. Orbit downloads and verifies the configured release, then installs the OS and every bundled app together. The default source is built into the program:
+Open **Apps → Updates → Update everything**. Orbit downloads and verifies both releases, installs the OS and its bundled apps, then sends the worker program to your assigned turtles over the modem. Turtles do not need HTTP access. The default source is built into the program:
 
 ```text
 https://raw.githubusercontent.com/mhayden123/OrbitOS/main/dist/orbit-release
@@ -72,11 +72,17 @@ https://raw.githubusercontent.com/mhayden123/OrbitOS/main/dist/orbit-release
 
 The repository is [mhayden123/OrbitOS](https://github.com/mhayden123/OrbitOS). It must be public for in-game downloads without credentials, and Minecraft's HTTP access must be enabled. No account token is stored on your computers.
 
-**What's included?** lists app versions. Managed apps are Turtle Fleet (controller), Run a program, Displays & network, Update Center, and Settings & help. They are contained in `/orbit.lua`, so a single verified replacement updates them together. Rollback restores the whole previous bundle. Separate programs you copy onto the computer keep their own update mechanisms, and turtle workers are installed separately on each turtle with the Fleet installer.
+**Included apps** lists app versions. Managed apps are Turtle Fleet (controller), Run a program, Displays, Updates, and Settings & help. They are contained in `/orbit.lua`, so a single verified replacement updates them together. Rollback restores the whole previous OS bundle. Separate programs you copy onto the computer keep their own update mechanisms.
 
-Settings are preserved. Running apps continue until you close Orbit and run `orbit` again; the updater does not restart a working Fleet controller. Repeated Update clicks against the same installed file report that it is already up to date without creating extra backups. **Check without installing** lets you review the version, app list and size first.
+**Turtle updates** shows the result for each discovered turtle assigned to this controller. Active jobs, including paused or blocked jobs, wait until completed or cancelled by you. Idle workers receive acknowledged chunks, verify size, SHA-256 and Lua syntax, retain a backup, and restart their program. **Updated** means the new version has reconnected, not just that the transfer finished. Settings and fuel are preserved; updates do not move turtles. Offline turtles must be brought back into range and updated again. Keep Orbit open and chunks loaded until the transfers finish. Closing Updates alone does not stop the transfer. **Stop queued updates** cancels waiting/partial transfers; a worker already installing may finish and restart.
 
-**Change update source** saves an override, and **Use OrbitOS GitHub** restores the built-in source. Existing overrides remain in effect across installations. For a computer still on 0.1.0, install the new `install-os.lua` once, or enter the default source above in the old updater and install 0.1.1.
+Workers older than 0.3.0 need **one initial upgrade** using the current `install.lua`, choosing **Turtle worker**, then launching it. Those older programs do not contain a receiver for updates. Once upgraded, use the controller's **Update everything** or **Turtle updates → Update turtles**. On the turtle, run the worker (`fleet`), not the Orbit desktop. Its startup should launch only the worker. In-game HTTP installation: `wget run https://raw.githubusercontent.com/mhayden123/OrbitOS/main/install.lua`.
+
+Worker backups use `/.fleet-worker-update.backup` with numbered suffixes. If necessary, stop the worker and copy a retained backup over `/fleet.lua`. OS rollback does not roll back turtles. The owner ID, group and session prevent accidental cross-control but are not cryptographic authentication; use remote updates on trusted Rednet networks.
+
+Settings are preserved. Running apps continue until you close Orbit and run `orbit` again; wait until turtle transfers and jobs are finished before restarting. Repeated updates to the same installed version do not create extra backups. **Update options → Check OS release** lets you review the version, app list and size first. **Update OS + apps only** leaves workers alone.
+
+**Update options → Change update source** saves an override, and **Use OrbitOS GitHub** restores the built-in source. Existing overrides remain in effect across installations. Older Orbit versions can fetch this release using their existing OS updater; restart Orbit to see the new controls.
 
 For a fresh install with HTTP enabled, run:
 
@@ -92,15 +98,17 @@ Every build creates `dist/orbit-release/` containing exactly:
 orbit-release/
   manifest.json
   orbit.lua
+  worker.json
+  fleet-worker.lua
 ```
 
-Copy that directory onto an in-game disk as `/disk/orbit-release`, or into another directory visible to the computer. In **Update Center → Change update source**, enter the directory and save it, then select **Update OS + apps**. A local Windows folder is not directly visible to an in-game computer: copy it into the world's ComputerCraft filesystem or transfer it using the server's supported method.
+Copy that directory onto an in-game disk as `/disk/orbit-release`, or into another directory visible to the controller. In **Updates → Update options → Change update source**, enter the directory and save it, then select **Update everything**. Only the controller needs the release files. A local Windows folder is not directly visible to an in-game computer: copy it into the world's ComputerCraft filesystem or transfer it using the server's supported method.
 
 The updater checks the release's SHA-256 checksum and Lua syntax, verifies the staged write, and retains the previous `/orbit.lua` under a numbered backup name. Fleet settings are untouched; Orbit saves update source/history separately from the bundle. **Rollback previous update** restores the previous program after confirmation, retaining another backup of the replaced version. Updates take effect the next time you close Orbit and run `orbit` again.
 
 ## Updates from GitHub
 
-The default repository source is already configured. To use another source, publish the generated `manifest.json` and `orbit.lua` together, either in a repository directory or as assets of the same GitHub release. Enter the HTTPS URL of their containing directory under **Change update source**. Supported forms include:
+The default repository source is already configured. To use another source, publish all four generated release files together, either in a repository directory or as assets of the same GitHub release. Enter the HTTPS URL of their containing directory under **Change update source**. Supported forms include:
 
 ```text
 https://raw.githubusercontent.com/OWNER/REPO/main/orbit-release
@@ -111,13 +119,13 @@ These are templates: replace OWNER, REPO and the version with your own. A `githu
 
 Private repositories requiring credentials are not supported. The server must allow HTTPS requests. Checksums detect damaged or mismatched downloads; they do not authenticate a publisher who controls both manifest and file. Choose an update URL you trust.
 
-Updates start only when you click **Update OS + apps**, or choose **Check without installing** and then **Install update**. Downgrades through the update source are rejected; use Rollback for the previous installed copy. A power interruption during file replacement may require manually restoring the retained backup.
+Updates start only on request. Downgrades through the update source are rejected; use **Update options → Restore previous OS** for the previous installed OS copy. A power interruption during file replacement may require manually restoring the retained backup. Updates across multiple computers are not an atomic transaction: inspect each turtle's result if a connection or disk fails.
 
 ## Verification and current limits
 
 The test suite includes real release-bundle installation, desktop window behavior at native device sizes, keyboard and mouse control, app isolation, packet validation, owner restrictions, frame ordering, touch mapping, detach/reconnect handling, checksum vectors, HTTP/local update sources, failed writes and rollback. End-to-end simulations run an excavation using Fleet inside the standalone Orbit bundle while another app is focused. A rendered preview uses the actual Lua character/color buffers.
 
-This is a first usable release, **not yet integration-tested inside Minecraft**. It does not include a file manager, encrypted networking, automatic app discovery/installation, saved window sessions, or migration of running programs to another computer. Casting mirrors a program that continues executing on the sender. The updater updates Orbit and the bundled Fleet controller; standalone turtle workers continue to use the Fleet installer.
+This release does not include a file manager, encrypted networking, automatic app discovery/installation, saved window sessions, or migration of running programs to another computer. Casting mirrors a program that continues executing on the sender. Updates cover Orbit, bundled apps and assigned workers; standalone Fleet controllers still use the Fleet installer.
 
 ## Development
 

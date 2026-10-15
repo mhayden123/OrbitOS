@@ -126,7 +126,7 @@ function M.new(display,keys,options)
             if offset==0 then self.close(w.id)
             elseif offset==2 then self.maximize(w)
             elseif offset==4 then w.hidden=true; self.focused=nil; self.launcher=true
-            elseif offset==6 then if options.cast then options.cast(w.id) end
+            elseif offset>=6 and offset<=10 then if options.cast then options.cast(w.id) end
             else self.drag={id=w.id,x=b,y=c,wx=w.x,wy=w.y,ww=w.w,wh=w.h,mode="move"} end
           elseif c==w.y+w.h-1 then self.drag={id=w.id,x=b,y=c,wx=w.x,wy=w.y,ww=w.w,wh=w.h,mode="size"}
           else self.appInput(w.id,event,a,b-w.x+1,c-w.y) end
@@ -154,7 +154,7 @@ function M.new(display,keys,options)
     end
   end
   function self.render()
-    local t=canvas.term; t.setBackgroundColor(display.isColor() and 2048 or 32768); t.clear()
+    local t=canvas.term; t.setBackgroundColor(32768); t.clear()
     -- Hidden windows still render into their buffers for live monitor casting.
     for _,w in ipairs(self.windows) do
       invoke(w,"render")
@@ -164,11 +164,11 @@ function M.new(display,keys,options)
     local function draw(w)
       local x,y=w.full and 1 or w.x,w.full and 1 or w.y+1
       if not w.full then
-        local bar=(w.title..string.rep(" ",w.w)):sub(1,w.w-7).."C _ ^ X"
+        local bar=(w.title..string.rep(" ",w.w)):sub(1,w.w-11).."Cast  - + X"
         surface.text(t,w.x,w.y,bar,1,w.id==self.focused and 512 or 128)
       end
       for row=1,w.surface.height do t.setCursorPos(x,y+row-1); t.blit(w.surface.term.getLine(row)) end
-      if not w.full then surface.text(t,w.x,w.y+w.h-1,string.rep("-",w.w-1).."/",256,128) end
+      if not w.full then surface.text(t,w.x,w.y+w.h-1,("Drag here to resize"..string.rep(" ",w.w)):sub(1,w.w-1).."/",256,128) end
     end
     local focused=find(self.focused)
     if focused and focused.full then draw(focused); surface.text(t,self.width-5,1," Apps ",1,128)

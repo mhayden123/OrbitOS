@@ -77,7 +77,7 @@ function M.run(mouse, orbit)
       receive=function(protocol)
         while true do
           local _, sender, message, received = env.os.pullEvent("rednet_message")
-          if received==protocol then return sender,message,received end
+          if not protocol or received==protocol then return sender,message,received end
         end
       end,
     }
@@ -156,7 +156,7 @@ function M.run(mouse, orbit)
   if orbit then
     local k=require("orbit_tests").keys
     world.push(42,"key",k.f1); world.push(42,"key",k.down); world.push(42,"key",k.down); world.push(42,"key",k.enter)
-    world.untilTrue(function() return controller.screen.text():find("DISPLAYS & NETWORK",1,true) end)
+    world.untilTrue(function() return controller.screen.text():find("DISPLAYS",1,true) end)
   end
   local function completed()
     for _,packet in ipairs(world.packets) do

@@ -16,18 +16,29 @@ function M.run(test,equal)
       sha256=sha.digest(source),apps={{id="fleet",title="Turtle Fleet",version="0.2.4"}}}
     local current=screen.api
     local h={screen=screen,fs=f,source=source,manifest=manifest,requests={},config={group="orbit"},saves=0}
+    h.workerSource="return 'new turtle'"
+    h.workerManifest={format=1,product="fleet-worker",artifact="fleet-worker.lua",version="0.3.1",
+      size=#h.workerSource,sha256=sha.digest(h.workerSource)}
     local http={get=function(request)
       h.requests[#h.requests+1]=request.url
       coroutine.yield("http_success")
       if h.httpError then return nil,"HTTP 404: release unavailable" end
-      local data=request.url:match("manifest%.json$") and "manifest" or h.source
+      local data=request.url:match("worker%.json$") and "worker" or request.url:match("fleet%-worker%.lua$") and h.workerSource
+        or request.url:match("manifest%.json$") and "manifest" or h.source
       return {read=function(n) if #data==0 then return nil end; local chunk=data:sub(1,n); data=data:sub(n+1); return chunk end,close=function() end}
     end}
     local opts={keys=terminal.keys,config=h.config,version="0.1.1",fs=f.api,http=http,
-      decode=function() return h.manifest end,saveConfig=function() h.saves=h.saves+1 end,
+      decode=function(value) return value=="worker" and h.workerManifest or h.manifest end,saveConfig=function() h.saves=h.saves+1 end,
       term={current=function() return current end,redirect=function(t) local old=current; current=t; return old end}}
     function h.open()
       h.app=apps.definitions(opts)[4].create(screen.api)
+    end
+    function h.enableWorkers()
+      h.fleet={rows={},running=false,start=function(value)
+        equal(value.source,h.workerSource); h.fleet.running=true
+        h.fleet.rows={{id=7,label="Test turtle",version="0.3.0",state="Waiting",detail="Will update after the job"}}
+      end,cancel=function() h.fleet.running=false end}
+      opts.fleetUpdates=h.fleet; h.open()
     end
     local function input(...)
       local old=os
@@ -81,10 +92,30 @@ function M.run(test,equal)
   end)
 
   test("Update Center: source override persists, GitHub default can be restored",function()
-    local h=fixture(); h.press("changeSource"); h.app.source="/disk/custom-release"; h.press("saveSource")
+    local h=fixture(); h.press("options"); h.press("changeSource"); h.app.source="/disk/custom-release"; h.press("saveSource")
     equal(h.config.updateSource,"/disk/custom-release"); h.open(); equal(h.app.source,"/disk/custom-release")
-    h.press("changeSource"); h.press("defaultSource"); equal(h.config.updateSource,releaseInfo.updateSource)
+    h.press("options"); h.press("changeSource"); h.press("defaultSource"); equal(h.config.updateSource,releaseInfo.updateSource)
     h.open(); equal(h.app.source,releaseInfo.updateSource); equal(h.saves,2)
+  end)
+
+  test("Updates: everything fetches both verified releases and shows turtle progress at all sizes",function()
+    for _,size in ipairs({{26,20,false},{39,13,true},{51,19,true}}) do
+      local h=fixture(table.unpack(size)); h.enableWorkers(); h.press("update",size[3]); h.finish()
+      equal(h.fs.files["/orbit.lua"],h.source); equal(h.app.page,"turtles"); assert(h.fleet.running)
+      equal(h.requests[3],releaseInfo.updateSource.."/worker.json")
+      equal(h.requests[4],releaseInfo.updateSource.."/fleet-worker.lua")
+      equal(h.config.installedVersion,"0.2.0"); h.press("worker:1",size[3]); equal(h.app.page,"worker")
+      h.press("back"); h.press("stopWorkers"); assert(not h.fleet.running)
+      h.press("back"); h.press("update"); h.finish(); equal(h.app.page,"turtles")
+      h.open(); assert(h.fleet.running); h.press("turtles"); h.press("worker:1"); equal(h.app.page,"worker")
+    end
+  end)
+
+  test("Updates: broken turtle package prevents Update everything from partially installing the OS",function()
+    local h=fixture(); h.enableWorkers(); h.workerManifest.sha256=string.rep("0",64)
+    h.press("update"); h.finish(); equal(h.fs.mutations,0); assert(not h.fleet.running)
+    equal(h.app.page,"message"); h.press("back"); h.press("options"); h.press("osOnly"); h.finish()
+    equal(h.fs.files["/orbit.lua"],h.source); assert(not h.fleet.running)
   end)
 
   test("Update Center: download failures and bad checksums never install",function()
@@ -97,11 +128,11 @@ function M.run(test,equal)
   end)
 
   test("Update Center: check-only, install, rollback and installed-version guard",function()
-    local h=fixture(); h.press("check"); h.finish(); equal(h.app.page,"review"); equal(h.fs.mutations,0)
+    local h=fixture(); h.press("options"); h.press("check"); h.finish(); equal(h.app.page,"review"); equal(h.fs.mutations,0)
     h.press("install"); h.finish(); equal(h.fs.files["/orbit.lua"],h.source)
     h.manifest.version="0.1.5"; h.press("back"); h.press("update"); h.finish()
     assert(h.app.message:find("Older release",1,true)); equal(h.fs.files["/orbit.lua"],h.source)
-    h.press("back"); h.press("rollback"); h.press("restore"); h.finish()
+    h.press("back"); h.press("options"); h.press("rollback"); h.press("restore"); h.finish()
     equal(h.fs.files["/orbit.lua"],"return 'old OS and old apps'")
     equal(h.fs.files[h.config.rollback],h.source); equal(h.config.installedVersion,nil)
   end)

@@ -1,8 +1,8 @@
 # Orbit OS and Turtle Fleet
 
-**Orbit OS 0.1.1:** use the standalone [`install-os.lua`](install-os.lua) for a desktop with Turtle Fleet as an app, movable/resizable windows, monitor casting, and one-button OS/app updates. The default update source is this repository's `main/dist/orbit-release` directory; see the [Orbit guide](docs/ORBIT.md). The Fleet-only installer below remains available for turtle workers and standalone controllers.
+**Orbit OS 0.2.0:** use the standalone [`install-os.lua`](install-os.lua) for a desktop with Turtle Fleet as an app, movable/resizable windows, monitor casting, and **Update everything** for the OS, bundled apps and assigned turtle workers. The default update source is this repository's `main/dist/orbit-release` directory; see the [Orbit guide](docs/ORBIT.md). Older workers need one initial installation of the current worker before receiving remote updates. The Fleet-only installer below remains available for turtle workers and standalone controllers.
 
-In-game Lua programs for discovering and controlling CC:Tweaked mining turtles from a regular or pocket computer. Version **0.2.4** targets the public APIs in **CC:Tweaked 1.120.3 for Minecraft 26.3**. That Minecraft-specific release is currently marked prerelease; the Lua package does not depend on a mod loader.
+In-game Lua programs for discovering and controlling CC:Tweaked mining turtles from a regular or pocket computer. Version **0.3.1** targets the public APIs in **CC:Tweaked 1.120.3 for Minecraft 26.3**. The Lua package does not depend on a mod loader.
 
 **Download/copy:** [`install.lua`](install.lua) at the top level of this project is the complete, ready-to-run Fleet installer. An identical copy is in [`dist/`](dist/). Local builds also produce `dist/turtle-fleet.zip` for offline transfer. No Python or additional Lua libraries are needed in Minecraft.
 
@@ -20,6 +20,7 @@ In-game Lua programs for discovering and controlling CC:Tweaked mining turtles f
 - Stops for low fuel, nearly full cargo, fluids, common protected blocks, entities, and unbreakable blocks.
 - Stacks mined items and consolidates compatible cargo stacks before reporting a full inventory.
 - Automatic pause after 12 seconds without contact from the controller. Reconnection requires Resume.
+- Remote worker updates from Orbit: idle workers update immediately; busy workers wait for their job to finish. Downloads are verified, settings preserved, and the previous worker kept as a backup.
 
 This version **cuts material away**. It does not fill holes, place a floor, scan distant terrain, unload into a chest automatically, or coordinate overlapping jobs between turtles.
 
@@ -176,7 +177,7 @@ python tools/build.py
 python tools/test.py
 ```
 
-All **97 test groups** pass across Fleet and Orbit. The harness uses Lua 5.2 via Lupa, compiles source and bundled programs, and simulates geometry, digging, inventory, fuel, obstructions, GPS verification, command retries, ownership, and connection loss. Inventory tests model selected-slot insertion and cover a 525-block dirt excavation, fragmented stacks, item variants, stack limits, failed transfers, and cancellation during consolidation. The route suite exercises 480 size/facing combinations plus full simulated excavations from all rectangle corners. Orbit adds window management, casting, one-button OS/app updates, persistent sources, verification, rollback, and release-bundle integration tests.
+All **108 test groups** pass across Fleet and Orbit. The harness uses Lua 5.2 via Lupa, compiles source and bundled programs, and simulates geometry, digging, inventory, fuel, obstructions, GPS verification, command retries, ownership, and connection loss. Inventory tests model selected-slot insertion and cover a 525-block dirt excavation, fragmented stacks, item variants, stack limits, failed transfers, and cancellation during consolidation. The route suite exercises 480 size/facing combinations plus full simulated excavations from all rectangle corners. Orbit adds window management, casting, one-button OS/app/worker updates, persistent sources, verification, rollback, and release-bundle integration tests. Worker update tests cover ownership, session checks, busy jobs, duplicate/out-of-order packets, lost acknowledgements, timeouts, cancellation, invalid Lua, checksum failure, disk recovery and reconnect confirmation.
 
 GUI tests use a strict terminal buffer that rejects out-of-bounds writes, overlapping controls, clipped button labels, and non-grayscale colors on basic computers. They cover both job modes, editing, pagination, stale status, preserved focus, resizing, keyboard input, and clicks at 26×19, 26×20 and 51×19. Separate event simulations load the release bundles and complete discovery, job setup, acknowledgement, excavation, and return using both mouse and keyboard workflows. **A real Minecraft 26.3 game has not yet been used for integration testing.**
 

@@ -44,7 +44,7 @@ function M.fetch(base,name,fs,http)
     base=base:gsub("^https://github.com/([^/]+/[^/]+)/blob/","https://raw.githubusercontent.com/%1/")
     local f,why,failed=http.get({url=base.."/"..name,binary=true,timeout=15})
     if not f then if failed then failed.close() end; error(why or "Download failed",0) end
-    local limit=name=="manifest.json" and 16384 or M.LIMIT
+    local limit=(name=="manifest.json" or name=="worker.json") and 16384 or M.LIMIT
     local ok,value=pcall(function()
       local parts,total={},0
       while true do local chunk=f.read(math.min(8192,limit-total+1)); if not chunk then break end; total=total+#chunk; assert(total<=limit,"Download exceeds size limit"); parts[#parts+1]=chunk end
@@ -53,7 +53,7 @@ function M.fetch(base,name,fs,http)
     f.close(); assert(ok,value); return value
   end
   assert(not base:find("://",1,true),"Use an HTTPS release URL or an in-game directory")
-  return M.read(fs,base.."/"..name,name=="manifest.json" and 16384 or M.LIMIT)
+  return M.read(fs,base.."/"..name,(name=="manifest.json" or name=="worker.json") and 16384 or M.LIMIT)
 end
 function M.check(base,current,fs,http,decode,yield)
   assert(type(base)=="string" and #base>0,"Choose an update directory or HTTPS URL")

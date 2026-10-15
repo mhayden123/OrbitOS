@@ -106,7 +106,8 @@ function M.new(display, keys, options)
       self.listPage = math.min(self.listPage, self.pages)
       local focused = g.focus and tonumber(g.focus:match("^turtle:(%d+)$"))
       if focused then for index,id in ipairs(ids) do if id == focused then self.listPage=math.floor((index-1)/self.perPage)+1 end end end
-      g.text(2,3,"LIVE " .. #ids .. "   page " .. self.listPage .. "/" .. self.pages,g.size-2,"8")
+      local online=0; for _,id in ipairs(ids) do if client.fresh(client.peers[id]) then online=online+1 end end
+      g.text(2,3,online .. "/" .. #ids .. " online   " .. self.listPage .. "/" .. self.pages,g.size-2,"8")
       local first = (self.listPage-1)*self.perPage+1
       for index=first,math.min(#ids,first+self.perPage-1) do
         local id, entry = ids[index], client.peers[ids[index]]

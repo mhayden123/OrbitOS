@@ -1,35 +1,35 @@
 {
   "format": 1,
   "product": "orbit-os",
-  "version": "0.1.1",
+  "version": "0.2.0",
   "artifact": "orbit.lua",
-  "size": 93930,
-  "sha256": "764b48b4d996e759b9b1ea93afed03fde583eca07e983c22f42039f4ca9950dd",
+  "size": 108581,
+  "sha256": "6ec2b4d2defebbbbd720ae0665467a893ede20e454e7bfe474a29d5d25d5f62b",
   "apps": [
     {
       "id": "fleet",
       "title": "Turtle Fleet",
-      "version": "0.2.4"
+      "version": "0.3.1"
     },
     {
       "id": "program",
       "title": "Run a program",
-      "version": "0.1.1"
+      "version": "0.2.0"
     },
     {
       "id": "network",
-      "title": "Displays & network",
-      "version": "0.1.1"
+      "title": "Displays",
+      "version": "0.2.0"
     },
     {
       "id": "updates",
-      "title": "Update Center",
-      "version": "0.1.1"
+      "title": "Updates",
+      "version": "0.2.0"
     },
     {
       "id": "settings",
       "title": "Settings & help",
-      "version": "0.1.1"
+      "version": "0.2.0"
     }
   ]
 }

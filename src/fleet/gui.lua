@@ -72,7 +72,7 @@ function M.new(display, keys)
     self.widgets[#self.widgets + 1] = {
       id = id, label = label, x = x, y = y, width = width, height = options.height or 2,
       action = action or id, enabled = options.enabled ~= false, danger = options.danger,
-      sub = options.sub, kind = "button",
+      sub = options.sub, primary=options.primary, kind = "button",
     }
   end
 
@@ -124,6 +124,7 @@ function M.new(display, keys)
       bg = not w.enabled and "f" or selected and (self.color and "b" or "0") or "7"
       fg = not w.enabled and "8" or selected and not self.color and "f" or "0"
       if w.danger and w.enabled and self.color and not selected then bg = "e" end
+      if w.primary and w.enabled and self.color then bg="b" end
       self.fill(w.x, w.y, w.width, w.height, bg)
       if w.kind == "field" then
         local cursor = math.min(self.cursors[w.id] or #w.value, #w.value)

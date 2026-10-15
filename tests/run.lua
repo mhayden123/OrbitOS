@@ -30,6 +30,7 @@ local function harness(p)
     publish = function(status) h.messages[#h.messages + 1] = status end,
     mark = function() h.marks = h.marks + 1 end,
     clearMark = function() h.marks = h.marks - 1 end,
+    maintenance = function() return h.updating end,
   })
   local sequence = 0
   function h.command(action, body, sender)
@@ -47,6 +48,10 @@ local function harness(p)
 end
 
 require("inventory_tests").run(test, equal, harness)
+test("worker refuses a new job during an update without moving",function()
+  local h=harness(); h.updating=true; local result=h.start()
+  assert(not result.ok and result.error:find("update",1,true)); equal(#h.sim.moves,0); equal(h.marks,0)
+end)
 
 test("route covers every cell once with adjacent steps: 480 dimension/facing combinations", function()
   for heading = 0, 3 do
@@ -381,6 +386,7 @@ end)
 
 require("orbit_tests").run(test,equal)
 require("update_app_tests").run(test,equal)
+require("worker_update_tests").run(test,equal)
 test("Orbit release: Fleet completes excavation while another app is focused",function()
   require("integration").run(true,true)
 end)

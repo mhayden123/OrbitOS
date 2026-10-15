@@ -41,7 +41,8 @@ function M.new(options)
     local reply = { request = message.request, ok = false }
     local action = message.action
     if action == "start" then
-      if self.active then reply.error = "Turtle is already working."
+      if options.maintenance and options.maintenance() then reply.error = "Worker update in progress. Try again when it reconnects."
+      elseif self.active then reply.error = "Turtle is already working."
       elseif message.revision ~= self.revision then reply.error = "Status changed. Review and submit a fresh job."
       elseif not options.mining() then reply.error = "Equip a diamond pickaxe for mining programs."
       else

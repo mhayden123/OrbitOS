@@ -1,0 +1,8 @@
+{
+  "format": 1,
+  "product": "fleet-worker",
+  "version": "0.3.1",
+  "artifact": "fleet-worker.lua",
+  "size": 35281,
+  "sha256": "7b14b33e58666f72ae9f709f1f910005fed84e3a2a3f3a75f47895fd76811d54"
+}

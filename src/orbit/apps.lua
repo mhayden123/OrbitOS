@@ -7,8 +7,9 @@ local surface=require("orbit.surface")
 local task=require("orbit.task")
 local update=require("orbit.update")
 local releaseInfo=require("orbit.release")
+local workerRelease=require("fleet.updates")
 local M={}
-local function button(id,label,enabled) return {id=id,label=label,enabled=enabled} end
+local function button(id,label,enabled,primary) return {id=id,label=label,enabled=enabled,primary=primary} end
 local function note(text) return {text=text} end
 local function field(id,label,value,change,numeric) return {id=id,label=label,value=value,change=change,field=true,numeric=numeric} end
 function M.definitions(o)
@@ -29,7 +30,10 @@ function M.definitions(o)
     local cfg=o.load("/.fleet-controller") or {}
     local client=fleetClient.new({group=cfg.group,owner=o.id,now=o.now,boot=o.boot})
     local app=fleetDashboard.new(display,o.keys,{client=client,setup=not cfg.group,
-      saveGroup=function(value) o.save("/.fleet-controller",{group=value}) end})
+      saveGroup=function(value)
+        o.save("/.fleet-controller",{group=value})
+        if o.fleetUpdates then o.fleetUpdates.setGroup(value) end
+      end})
     local event=app.event
     app.event=function(name,a,b,c,...)
       if name=="rednet_message" and c==fleetNet.PROTOCOL then client.receive(a,b) end
@@ -38,7 +42,7 @@ function M.definitions(o)
     app.tick=function() if o.modemCount()>0 then client.tick() end end
     return app
   end}
-  definitions[#definitions+1]={id="program",title="Run a program",minW=26,minH=10,create=function(display,w)
+  definitions[#definitions+1]={id="program",title="Run a program",minW=26,minH=13,create=function(display,w)
     local app=generic(display); app.path="shell"
     function app.render()
       if app.process then
@@ -49,7 +53,7 @@ function M.definitions(o)
       end
       app.p.draw("RUN A PROGRAM","CraftOS applications",{
         field("path","Program path",app.path,function(v) app.path=v end),
-        button("run","Run"),note("Use shell for a command prompt."),note("F1 apps / F10 close")})
+        button("run","Run",true,true),note("Use shell for a command prompt.")})
     end
     function app.event(...)
       if app.process then app.process.event(...); return end
@@ -62,31 +66,42 @@ function M.definitions(o)
     end
     return app
   end}
-  definitions[#definitions+1]={id="network",title="Displays & network",singleton=true,minW=26,minH=10,create=function(display)
+  definitions[#definitions+1]={id="network",title="Displays",singleton=true,minW=26,minH=13,create=function(display)
     local app=generic(display); app.source=o.castSource; app.touch=false
     function app.render()
       if app.page=="message" then app.p.draw("DISPLAY NOTICE","",app.messageItems(),"Back"); return end
-      local items={note("Group: "..o.config.group.." | ID "..o.id),note("Open modems: "..o.modemCount()),
-        button("source","App: "..(o.title(app.source) or "Choose an app")),
-        button("touch",app.touch and "[x] Allow monitor taps" or "[ ] Allow monitor taps"),button("stop","Stop all casts")}
+      if app.page=="sources" then
+        local choices={}
+        for _,w in ipairs(o.windows()) do if w.kind~="network" then choices[#choices+1]=button("app:"..w.id,w.title) end end
+        if #choices==0 then choices={note("Open an app from Apps first. Then return here to share it on a monitor.")} end
+        app.p.draw("CHOOSE AN APP","Share a live view",choices,"Back"); return
+      elseif app.page=="options" then
+        app.p.draw("DISPLAY OPTIONS","Wired and wireless",{
+          button("touch",app.touch and "Monitor taps: On" or "Monitor taps: Off"),button("stop","Stop all casts"),
+          note("Network: "..o.config.group.." / computer #"..o.id),note("Connected modems: "..o.modemCount()),
+          note("Wired: attach a monitor with networking cable and enable its modem."),
+          note("Wireless: on another computer, run orbit receive. Set its sender to "..o.id.." and group to "..o.config.group..".")},"Back"); return
+      end
+      local ready=o.title(app.source)~=nil
+      local items={button("source",ready and ("App: "..o.title(app.source)) or "Choose an app",true,not ready)}
+      if not ready then items[#items+1]=note("Choose what to share, then tap a display.") end
       app.targets=o.cast.targets()
-      if #app.targets==0 then items[#items+1]=note("No displays found yet.") end
+      if #app.targets==0 then items[#items+1]=note("No displays found. Open Connection help to connect one.") end
       for i,t in ipairs(app.targets) do
         local stream=o.cast.streams[t.key]
-        items[#items+1]=button("target:"..t.key,t.name.." "..t.width.."x"..t.height)
+        items[#items+1]=button("target:"..t.key,(stream and "Sharing: " or "Share to ")..t.name,ready)
         if stream then items[#items+1]=note("  "..stream.status) end
       end
-      items[#items+1]=note("Remote: run orbit receive there.")
-      app.p.draw("DISPLAYS & NETWORK","Choose an app, then a display",items)
+      items[#items+1]=button("options","Connection help & options")
+      app.p.draw("DISPLAYS","Share an app on a monitor",items)
     end
     function app.event(...)
       local action=app.p.event(...)
-      if action=="back" then app.back()
+      if action=="back" then if app.page=="home" then app.running=false else app.page="home"; app.p.reset() end
       elseif action=="source" then
-        local windows=o.windows(); local choices={}
-        for _,w in ipairs(windows) do if w.kind~="network" then choices[#choices+1]=w.id end end
-        local index=0; for i,id in ipairs(choices) do if id==app.source then index=i end end
-        app.source=choices[index%math.max(1,#choices)+1]
+        app.page="sources"; app.p.reset()
+      elseif action=="options" then app.page="options"; app.p.reset()
+      elseif action and action:match("^app:") then app.source=tonumber(action:sub(5)); app.page="home"; app.p.reset()
       elseif action=="touch" then app.touch=not app.touch
       elseif action=="stop" then o.cast.stopAll()
       elseif action and action:match("^target:") then
@@ -100,12 +115,13 @@ function M.definitions(o)
     end
     return app
   end}
-  definitions[#definitions+1]={id="updates",title="Update Center",singleton=true,minW=26,minH=10,create=function(display)
+  definitions[#definitions+1]={id="updates",title="Updates",singleton=true,minW=26,minH=13,create=function(display)
     local app=generic(display)
     local function savedSource()
       return type(o.config.updateSource)=="string" and #o.config.updateSource>0 and o.config.updateSource or releaseInfo.updateSource
     end
     app.source=savedSource()
+    local fleet=o.fleetUpdates
     local function work(fn,finish)
       app.page="busy"; app.progress="Checking release..."; app.p.reset(); app.job=task.new(fn,display,o.term)
       app.finish=finish
@@ -116,21 +132,32 @@ function M.definitions(o)
       return installed and installed>update.version(o.version) and o.config.installedVersion or o.version
     end
     local function installed(result)
+      if result.workers and fleet then
+        app.summary=(result.unchanged and "OS and apps are current." or "OS and apps installed. Restart Orbit after turtle updates finish.")
+        app.page="turtles"; app.p.reset()
+      end
       if result.unchanged then
+        if result.workers then return end
         app.notice("Already up to date on disk: Orbit "..result.version.." and its bundled apps. "..
           (result.version~=o.version and "Restart Orbit when current work is finished to use this version." or ""),"home")
         return
       end
-      o.config.rollback=result.backup; o.config.installedVersion=result.version
-      local saved,why=pcall(o.saveConfig)
+      if result.workers then
+        if result.saveError then app.summary=app.summary.." Could not save update history: "..result.saveError end
+        return
+      end
       app.notice("Updated Orbit "..result.version.." and all bundled apps. Close Orbit and run orbit again when current work is finished. "..
         (result.backup and "Rollback: "..result.backup..". " or "")..
-        (saved and "" or "Could not save update history: "..tostring(why)),"home")
+        (result.saveError and "Could not save update history: "..result.saveError or ""),"home")
     end
     local function install(release)
       if release.unchanged then return {unchanged=true,version=release.manifest.version} end
       app.progress="Installing OS and apps..."
-      return {backup=update.apply(o.fs,release,yielding),version=release.manifest.version}
+      local result={backup=update.apply(o.fs,release,yielding),version=release.manifest.version}
+      -- Persist before another event can close this window or begin worker transfers.
+      o.config.rollback=result.backup; o.config.installedVersion=result.version
+      local saved,why=pcall(o.saveConfig); if not saved then result.saveError=tostring(why) end
+      return result
     end
     function app.tick()
       if app.job and app.job.done then
@@ -145,35 +172,71 @@ function M.definitions(o)
       elseif app.page=="source" then
         items={field("source","Directory or HTTPS release URL",app.source,function(v) app.source=v end),
           button("saveSource","Save source"),button("defaultSource","Use OrbitOS GitHub"),button("cancel","Cancel")}
+      elseif app.page=="options" then
+        items={button("check","Check OS release"),button("osOnly","Update OS + apps only"),button("changeSource","Change update source"),
+          button("rollback","Restore previous OS",o.config.rollback~=nil),note("Source: "..(savedSource()==releaseInfo.updateSource and "OrbitOS on GitHub" or savedSource()))}
+      elseif app.page=="turtles" then
+        items={note(app.summary or "Updates wait for active jobs to finish.")}
+        if not fleet or #fleet.rows==0 then
+          items[#items+1]=note("No update results yet. Open Turtle Fleet to choose your fleet, then update while turtles are in range.")
+        else
+          for i,row in ipairs(fleet.rows) do
+            items[#items+1]=button("worker:"..i,"#"..row.id.." "..row.state..(row.state=="Sending" and " "..row.progress.."%" or ""))
+          end
+        end
+        items[#items+1]=button("workers","Update turtles",fleet~=nil and not fleet.running,true)
+        if fleet and fleet.running then items[#items+1]=button("stopWorkers","Stop queued updates") end
+      elseif app.page=="worker" then
+        local row=fleet.rows[app.worker]
+        items={note(row.label or ("Turtle #"..row.id)),note("Version: "..tostring(row.version)),note(row.state),
+          note(row.detail or (row.state=="Setup needed" and "This worker predates remote updates. Install the latest worker once and restart it. Future updates come from here."
+          or row.state=="Offline" and "Bring the turtle in range and try Update turtles again." or "Its settings are kept when updating."))}
       elseif app.page=="included" then
         items={note("Orbit OS "..o.version)}
         for _,info in ipairs(releaseInfo.apps) do items[#items+1]=note(info.title.." "..info.version) end
         items[#items+1]=note("These update together.")
         items[#items+1]=note("Other programs keep their own updater.")
-        items[#items+1]=note("Turtle workers update on each turtle.")
+        items[#items+1]=note("Assigned turtles update over the modem. They do not need internet access.")
       elseif app.page=="review" then
         items={note("Running: "..o.version),note("Available: "..app.release.manifest.version),note("Size: "..app.release.manifest.size.." bytes"),
           note("SHA-256 verified."),note("OS and bundled apps update together."),button("install","Install update"),button("cancel","Cancel")}
         for _,info in ipairs(app.release.manifest.apps or {}) do items[#items+1]=note(info.title.." "..info.version) end
       elseif app.page=="rollback" then items={note("Restore the previous OS and apps?"),note("Running apps continue until restart."),button("restore","Restore backup"),button("cancel","Cancel")}
-      else items={note("Running Orbit "..o.version),button("update","Update OS + apps"),
-          button("included","What's included?"),button("changeSource","Change update source"),button("check","Check without installing"),
-          button("rollback","Rollback previous update",o.config.rollback~=nil),note("Restart when your work is finished.")}
+      else items={note("Orbit "..o.version),button("update","Update everything",not fleet or not fleet.running,true),
+          button("turtles",fleet and fleet.running and "Turtles: updating..." or "Turtle updates"),
+          button("included","Included apps"),button("options","Update options")}
       end
-      app.p.draw("UPDATE CENTER","OS and bundled apps",items)
+      app.p.draw("UPDATES","OS, apps and your turtles",items,app.page=="home" and "Close" or "Back")
     end
     function app.event(...)
       if app.job then app.job.event(...); return end
       local action=app.p.event(...)
-      if action=="back" then if app.page=="home" then app.running=false else app.page="home"; app.p.reset() end
+      if action=="back" then
+        if app.page=="home" then app.running=false else app.page=app.page=="worker" and "turtles" or "home"; app.p.reset() end
       elseif action=="cancel" then app.page="home"; app.p.reset()
       elseif action=="changeSource" then app.source=savedSource(); app.page="source"; app.p.reset()
       elseif action=="included" then app.page="included"; app.p.reset()
+      elseif action=="options" or action=="turtles" then app.page=action; app.p.reset()
+      elseif action and action:match("^worker:") then app.worker=tonumber(action:sub(8)); app.page="worker"; app.p.reset()
+      elseif action=="stopWorkers" then fleet.cancel()
       elseif action=="saveSource" or action=="defaultSource" then
         if action=="defaultSource" then app.source=releaseInfo.updateSource end
         if #app.source==0 then app.notice("Enter an in-game folder or an HTTPS release URL.","source")
         else o.config.updateSource=app.source; o.saveConfig(); app.page="home"; app.p.reset() end
       elseif action=="update" then
+        work(function()
+          local release=update.check(savedSource(),currentVersion(),o.fs,o.http,o.decode,yielding)
+          local workers
+          if fleet then app.progress="Downloading turtle update..."; workers=workerRelease.fetch(savedSource(),o.fs,o.http,o.decode,yielding) end
+          local result=install(release)
+          if workers then fleet.start(workers); result.workers=true end
+          return result
+        end,installed)
+      elseif action=="workers" then
+        work(function() fleet.start(workerRelease.fetch(savedSource(),o.fs,o.http,o.decode,yielding)) end,function()
+          app.summary=nil; app.page="turtles"; app.p.reset()
+        end)
+      elseif action=="osOnly" then
         work(function() return install(update.check(savedSource(),currentVersion(),o.fs,o.http,o.decode,yielding)) end,installed)
       elseif action=="check" then
         work(function() return update.check(savedSource(),currentVersion(),o.fs,o.http,o.decode,yielding) end,
@@ -189,7 +252,7 @@ function M.definitions(o)
     end
     return app
   end}
-  definitions[#definitions+1]={id="settings",title="Settings & help",singleton=true,minW=26,minH=10,create=function(display)
+  definitions[#definitions+1]={id="settings",title="Settings & help",singleton=true,minW=26,minH=13,create=function(display)
     local app=generic(display); app.group=o.config.group
     function app.render()
       if app.page=="message" then app.p.draw("ORBIT HELP","",app.messageItems(),"Back"); return end
@@ -197,18 +260,21 @@ function M.definitions(o)
         app.p.draw("EXIT ORBIT?","Apps will close",{note("Fleet turtles pause when"),note("their controller link expires."),
           button("exit","Exit to CraftOS"),button("cancel","Keep working")},"Back"); return
       end
-      app.p.draw("SETTINGS & HELP","Orbit "..o.version.." / computer #"..o.id,{
+      if app.page=="network" then app.p.draw("DISPLAY NETWORK","Used by wireless receivers",{
         field("group","Display network group",app.group,function(v) app.group=v end),button("save","Save network group"),
-        button("help","Window and casting help"),button("quit","Exit Orbit"),note("Fleet keeps its own group settings.")})
+        note("Fleet keeps its own group settings.")},"Back"); return end
+      app.p.draw("SETTINGS & HELP","Orbit "..o.version.." / computer #"..o.id,{
+        button("network","Display network"),button("help","Windows & keyboard help"),button("quit","Exit Orbit")})
     end
     function app.event(...)
       local a=app.p.event(...)
-      if a=="back" then if app.page=="quit" then app.page="home" else app.back() end
+      if a=="back" then if app.page=="quit" or app.page=="network" then app.page="home"; app.p.reset() else app.back() end
+      elseif a=="network" then app.page="network"; app.p.reset()
       elseif a=="save" then
         if app.group:match("^[%w_-]+$") and #app.group<=32 then
           o.cast.stopAll(); o.cast.peers={}; o.config.group=app.group; o.saveConfig(); app.notice("Display network saved.")
         else app.notice("Use 1-32 letters, digits, hyphens or underscores.") end
-      elseif a=="help" then app.notice("Drag a title to move a window. Drag its bottom edge to resize. Title controls: C casts, _ minimizes, ^ maximizes, X closes. F1 opens Apps; F2 switches; F3 toggles full screen; F4 moves and F5 resizes using arrows, then Enter; F6 opens casting; F10 closes the current app. Fleet uses full screen when its controls need the space. Wired monitors appear directly. Wireless displays need a receiver computer running orbit receive, with this computer's ID and matching group. Receiver taps require permission on both computers. Programs share the computer's files and use cooperative multitasking.")
+      elseif a=="help" then app.notice("Drag a title to move a window. Drag its bottom edge to resize. Title controls: C casts, - minimizes, + maximizes, X closes. F1 opens Apps; F2 switches; F3 toggles full screen; F4 moves and F5 resizes using arrows, then Enter; F6 opens casting; F10 closes the current app. Fleet uses full screen when its controls need the space. Wired monitors appear directly. Wireless displays need a receiver computer running orbit receive, with this computer's ID and matching group. Receiver taps require permission on both computers. Programs share the computer's files and use cooperative multitasking.")
       elseif a=="quit" then app.page="quit"
       elseif a=="cancel" then app.page="home"
       elseif a=="exit" then o.quit() end
