@@ -14,6 +14,66 @@ local function definition(title,id)
   end}
 end
 function M.run(test,equal)
+  test("Orbit UI: system menu is distinct from Apps and preserves exit confirmation",function()
+    for _,size in ipairs({{26,13},{26,20},{40,30},{51,19},{80,30}}) do
+      for _,color in ipairs({true,false}) do
+        local screen=terminal.new(size[1],size[2],color); local exits=0
+        local defs=require("orbit.apps").definitions({keys=keys,config={group="orbit"},version="test",id=42,
+          quit=function() exits=exits+1 end})
+        local d=desktop.new(screen.api,keys,{apps=defs})
+        d.render(); local library=d.launcherLayout()
+        assert(screen.rows[library.y].text:find("Apps",1,true))
+        d.event("mouse_click",1,library.x+library.w-10,library.y); d.render()
+        assert(d.systemMenu and not d.launcher)
+        local _,items=d.systemLayout(); equal(#items,4); equal(items[1].label,"Settings"); equal(items[4].label,"Exit Orbit...")
+        d.event("key",keys.escape); assert(d.launcher and not d.systemMenu)
+        d.event("key",keys.f9); d.event("key",keys.enter,true); equal(#d.windows,0)
+        d.event("key",keys.enter); d.render()
+        equal(#d.windows,1); local settings=d.find(d.focused); equal(settings.kind,"settings"); equal(settings.app.page,"home")
+        local background=d.open(definition("Background")); d.render()
+        if not background.full then d.event("mouse_click",1,3,1) else d.event("key",keys.f9) end
+        assert(d.systemMenu)
+        local before=#background.app.events
+        d.event("char","x"); d.event("key",keys.f10); equal(#background.app.events,before); equal(#d.windows,2)
+        d.event("rednet_message",7,{},"test"); equal(background.app.events[#background.app.events][1],"rednet_message")
+        local _,choices=d.systemLayout(); d.event("mouse_click",1,choices[3].x,choices[3].y); d.render()
+        equal(d.focused,settings.id); equal(#d.windows,2); equal(settings.app.page,"message"); assert(settings.app.message:find("F9",1,true))
+        d.event("key",keys.f9); d.event("key",keys.up); d.event("key",keys.enter); d.render()
+        equal(settings.app.page,"quit"); equal(exits,0,"Opening Exit must still ask for confirmation")
+        settings.app.event("key",keys.escape); d.render(); equal(settings.app.page,"home"); equal(exits,0)
+        d.event("key",keys.f9); d.event("key",keys.down); d.event("key",keys.enter); d.render(); equal(d.find(d.focused).kind,"updates")
+        d.event("key",keys.f9); d.event("key",keys.f1); d.render(); assert(d.launcher and not d.systemMenu)
+        d.event("key",keys.f9); d.event("mouse_click",1,size[1],size[2]); assert(d.launcher and not d.systemMenu)
+        d.stop()
+      end
+    end
+  end)
+  test("Orbit UI: shadows leave screen edges and the dock clear after moving and resizing",function()
+    for _,color in ipairs({true,false}) do
+      for _,size in ipairs({{26,20},{39,13},{51,19},{80,30}}) do
+        local screen=terminal.new(size[1],size[2],color); local d=desktop.new(screen.api,keys,{apps={}})
+        d.launcher=false; d.render()
+        local dock=screen.rows[screen.height]; local dockText,dockBg=dock.text,dock.bg
+        d.launcher=true; d.render()
+        equal(screen.rows[screen.height].text,dockText); equal(screen.rows[screen.height].bg,dockBg)
+        for y=2,screen.height-1 do equal(screen.rows[y].bg:sub(screen.width),"f") end
+        if size[1]>=60 then
+          local w=d.open(definition("Edges"))
+          d.geometry(w,3,3,40,15); d.render()
+          equal(screen.rows[w.y+2].bg:sub(w.x+w.w,w.x+w.w),"7","Interior shadow should remain visible")
+          for _,bounds in ipairs({{999,999,40,15},{-999,-999,999,999}}) do
+            d.geometry(w,table.unpack(bounds)); d.render()
+            for y=2,screen.height-1 do equal(screen.rows[y].bg:sub(screen.width),"f") end
+            equal(screen.rows[screen.height-1].bg,string.rep("f",screen.width))
+          end
+          screen.resize(60,22); d.event("term_resize"); d.render()
+          equal(screen.rows[screen.height-1].bg,string.rep("f",screen.width))
+          for y=2,screen.height-1 do equal(screen.rows[y].bg:sub(screen.width),"f") end
+        end
+        d.stop()
+      end
+    end
+  end)
   test("Orbit UI: searchable launcher works with keyboard and clicks at all device sizes",function()
     for _,size in ipairs({{26,20},{39,13},{40,30},{51,19},{80,30},{100,36},{160,60}}) do
       for _,color in ipairs({true,false}) do

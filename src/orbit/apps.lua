@@ -239,6 +239,13 @@ function M.definitions(o)
   end}
   definitions[#definitions+1]={id="settings",title="Settings",description="Make Orbit your own",width=62,singleton=true,minW=26,minH=13,create=function(display)
     local app=generic(display); app.group=o.config.group
+    function app.navigate(page)
+      if app.resolution then app.resolution.close(); app.resolution=nil end
+      app.page="home"; app.p.reset()
+      if page=="help" then
+        app.notice("Apps: click Apps or press F1. Type to find an app. Orbit (F9) opens Settings, Updates, Help and Exit. F2 switches open apps. On larger screens, drag the title to move a window and its bottom edge to resize. The left controls close (x), minimize (-) and maximize (+). Cast shares the app. Compact screens show one app at a time. F3 toggles full screen; F4 moves and F5 resizes with arrows, then Enter; F6 opens casting; F10 closes. Forms use Tab, arrows and Enter; Ctrl+U clears a field. Other apps and Fleet connections keep running in the background.")
+      elseif page=="quit" then app.page="quit" end
+    end
     function app.render()
       if app.resolution then app.resolution.render(); return end
       if app.page=="message" then app.p.draw("ORBIT HELP","",app.messageItems(),"Back"); return end
@@ -266,8 +273,7 @@ function M.definitions(o)
         if app.group:match("^[%w_-]+$") and #app.group<=32 then
           o.cast.stopAll(); o.cast.peers={}; o.config.group=app.group; o.saveConfig(); app.notice("Display network saved.")
         else app.notice("Use 1-32 letters, digits, hyphens or underscores.") end
-      elseif a=="help" then app.notice("Apps: click Orbit or Apps, or press F1. Type to find an app. F2 switches open apps. On larger screens, drag the title to move a window and its bottom edge to resize. The left controls close (x), minimize (-) and maximize (+). Cast shares the app. Compact screens show one app at a time. F3 toggles full screen; F4 moves and F5 resizes with arrows, then Enter; F6 opens casting; F10 closes. Forms use Tab, arrows and Enter; Ctrl+U clears a field. Other apps and Fleet connections keep running in the background.")
-      elseif a=="quit" then app.page="quit"
+      elseif a=="help" or a=="quit" then app.navigate(a)
       elseif a=="cancel" then app.page="home"
       elseif a=="exit" then o.quit() end
     end

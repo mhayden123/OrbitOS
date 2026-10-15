@@ -21,6 +21,15 @@ function M.new(display,keys,options)
     local ok,why=pcall(w.app[method],...)
     if not ok then w.error=tostring(why); if w.app.close then pcall(w.app.close) end; w.app={} end
   end
+  local function closeSystem(restore)
+    if self.systemMenu and restore then self.launcher=self.systemReturnLauncher end
+    self.systemMenu=false; self.systemReturnLauncher=nil
+  end
+  function self.toggleSystem()
+    if self.systemMenu then closeSystem(true); return end
+    self.systemReturnLauncher=self.launcher; self.launcher=false
+    self.systemMenu=true; self.systemSelection=1; self.mode=nil; self.drag=nil
+  end
   local function resize(w)
     w.full=w.maximized or compact() or self.width<w.minW+4 or self.height<w.minH+4
     w.surface.term._orbitHeaderReserve=w.full and (w.maximized and 15 or 10) or 0
@@ -35,6 +44,7 @@ function M.new(display,keys,options)
   end
   function self.open(definition)
     if not definition then return end
+    closeSystem(false)
     if definition.windowId then self.focus(definition.windowId); self.launcher=false; return find(definition.windowId) end
     if definition.singleton then for _,w in ipairs(self.windows) do if w.kind==definition.id then self.focus(w.id); self.launcher=false; return w end end end
     if #self.windows>=8 then self.notice="8 windows: close one."; return end
@@ -105,6 +115,27 @@ function M.new(display,keys,options)
     return result
   end
   self.dockLayout=dockLayout
+  local function systemLayout()
+    local box={x=2,y=2,w=math.min(26,self.width-2)}; local items={}; local definitions={}
+    for _,app in ipairs(options.apps or {}) do definitions[app.id]=app end
+    for _,item in ipairs({{label="Settings",app="settings",page="home"},{label="Updates",app="updates"},
+      {label="Help & shortcuts",app="settings",page="help"},{label="Exit Orbit...",app="settings",page="quit"}}) do
+      if definitions[item.app] then
+        item.definition=definitions[item.app]; item.x=box.x+1; item.y=box.y+2+#items; item.w=box.w-2; item.h=1
+        items[#items+1]=item
+      end
+    end
+    box.h=#items+5
+    return box,items
+  end
+  self.systemLayout=systemLayout
+  local function activateSystem(item)
+    if not item then return end
+    closeSystem(false)
+    local w=self.open(item.definition)
+    if w and item.page then invoke(w,"navigate",item.page) end
+    if not w then self.launcher=true end
+  end
   function self.event(event,a,b,c,...)
     if event=="term_resize" then
       self.width,self.height=display.getSize(); canvas.resize(self.width,self.height); self.drag=nil; self.mode=nil
@@ -112,6 +143,30 @@ function M.new(display,keys,options)
       return
     end
     local w=find(self.focused)
+    local input=event=="key" or event=="key_up" or event=="char" or event=="paste" or event:match("^mouse_") or event=="terminate"
+    if event=="key" and not b and a==keys.f9 then self.toggleSystem(); return end
+    if event=="key" and not b and a==keys.f1 and self.systemMenu then
+      closeSystem(false); self.launcher=true; self.query=""; self.menu=1; return
+    end
+    if self.systemMenu and input then
+      local box,items=systemLayout()
+      if event=="key" and not b then
+        if a==keys.escape then closeSystem(true)
+        elseif a==keys.enter then activateSystem(items[self.systemSelection])
+        elseif #items>0 then
+          local delta=(a==keys.down or a==keys.tab) and 1 or a==keys.up and -1 or 0
+          self.systemSelection=(self.systemSelection-1+delta)%#items+1
+        end
+      elseif event=="mouse_scroll" and #items>0 then self.systemSelection=clamp(self.systemSelection+a,1,#items)
+      elseif event=="mouse_click" and a==1 then
+        for _,item in ipairs(items) do if inside(b,c,item) then activateSystem(item); return end end
+        if not inside(b,c,box) then closeSystem(true) end
+      end
+      return
+    end
+    if event=="mouse_click" and a==1 and c==1 and b>=2 and b<=8 and not (w and w.full and not w.hidden) then
+      self.toggleSystem(); return
+    end
     if event=="key" and not b then
       if a==keys.f1 then self.launcher=not self.launcher; self.mode=nil; self.drag=nil; self.query=""; self.menu=1; return
       elseif a==keys.f2 then local first=self.windows[1]; if first then self.focus(first.id); self.launcher=false end; return
@@ -143,7 +198,6 @@ function M.new(display,keys,options)
       end end
       return
     end
-    local input=event=="key" or event=="key_up" or event=="char" or event=="paste" or event:match("^mouse_") or event=="terminate"
     if self.launcher and input then
       local box,cards,matches,cols=launcherLayout()
       if event=="key" then
@@ -157,6 +211,7 @@ function M.new(display,keys,options)
       elseif event=="char" or event=="paste" then self.query=(self.query..tostring(a):gsub("[%z\1-\31\127-\255]","")):sub(1,32); self.menu=1
       elseif event=="mouse_scroll" then self.menu=clamp(self.menu+a,1,math.max(1,#matches))
       elseif event=="mouse_click" and a==1 then
+        if c==box.y and b>=box.x+box.w-11 and b<=box.x+box.w-5 then self.toggleSystem(); return end
         if c==box.y+1 then
           if b>=box.x+2 and b<=box.x+7 then self.showRunning=false; self.query=""; self.menu=1; return
           elseif b>=box.x+9 and b<=box.x+19 then self.showRunning=true; self.query=""; self.menu=1; return end
@@ -168,7 +223,7 @@ function M.new(display,keys,options)
       return
     end
     if event=="mouse_click" and a==1 then
-      if c==1 and (b<=7 and not (w and w.full) or b>=self.width-5 and w and w.full) then self.launcher=true; self.query=""; self.menu=1; return end
+      if c==1 and b>=self.width-5 and w and w.full then self.launcher=true; self.query=""; self.menu=1; return end
       if c==1 and w and w.full then
         if b>=self.width-9 and b<=self.width-7 then self.close(w.id); return end
         if w.maximized and b>=self.width-14 and b<=self.width-12 then self.maximize(w); return end
@@ -212,19 +267,25 @@ function M.new(display,keys,options)
     local t=canvas.term; t.setBackgroundColor(32768); t.clear()
     local function text(x,y,value,fg,bg) surface.text(t,x,y,value,2^tonumber(fg or "f",16),2^tonumber(bg or "0",16)) end
     local function fill(x,y,w,h,bg) for row=y,y+h-1 do text(x,row,string.rep(" ",math.max(0,w)),"f",bg) end end
+    local function shadow(box)
+      -- Shadows belong to the workspace: leave the screen edge and dock clear.
+      local left,top=math.max(2,box.x+1),math.max(2,box.y+1)
+      local right,bottom=math.min(self.width-1,box.x+box.w),math.min(self.height-2,box.y+box.h)
+      if right>=left and bottom>=top then fill(left,top,right-left+1,bottom-top+1,"7") end
+    end
     for _,w in ipairs(self.windows) do
       w.surface.term._orbitWindowTitle=not w.full and w.title or nil
       invoke(w,"render")
       if w.error then w.surface.term.clear(); surface.text(w.surface.term,2,2,"This app stopped."); surface.text(w.surface.term,2,4,w.error); surface.text(w.surface.term,2,6,"F10 closes the window.") end
     end
-    fill(1,1,self.width,1,"8"); text(2,1,"Orbit", "f","8")
+    fill(1,1,self.width,1,"8"); text(2,1,"[Orbit]", "f","8")
     text(10,1,"Workspace", "7","8"); text(self.width-#(options.subtitle or "")-1,1,options.subtitle or "","7","8")
     text(math.max(2,math.floor((self.width-8)/2)),math.floor(self.height/2),"O R B I T","8","f")
     local function draw(w)
       local x,y=w.full and 1 or w.x+1,w.full and 1 or w.y+1
       if not w.full then
         local bar=w.id==self.focused and "f" or "7"
-        fill(w.x+1,w.y+1,w.w,w.h,"7"); fill(w.x,w.y,w.w,w.h,"8"); fill(w.x,w.y,w.w,1,bar)
+        shadow(w); fill(w.x,w.y,w.w,w.h,"8"); fill(w.x,w.y,w.w,1,bar)
         text(w.x,w.y,"[x]", "0","e"); text(w.x+3,w.y,"[-]","0","7"); text(w.x+6,w.y,"[+]","0","d")
         text(w.x+10,w.y,theme.fit(w.title,w.w-18),"0",bar)
         text(w.x+w.w-7,w.y,"[Cast]","0",bar); text(w.x+w.w-2,w.y+w.h-1,"/","f","8")
@@ -248,8 +309,8 @@ function M.new(display,keys,options)
     if self.mode then fill(1,self.height,self.width,1,"8"); text(2,self.height,"Arrows to "..self.mode.."   Enter to finish","f","8") end
     if self.launcher then
       local box,cards,matches=launcherLayout()
-      fill(box.x+1,box.y+1,box.w,box.h,"7"); fill(box.x,box.y,box.w,box.h,"0")
-      text(box.x+2,box.y,"Orbit", "f","0"); text(box.x+box.w-2,box.y,"x","7","0")
+      shadow(box); fill(box.x,box.y,box.w,box.h,"0")
+      text(box.x+2,box.y,"Apps", "f","0"); text(box.x+box.w-11,box.y,"[Orbit]","0","b"); text(box.x+box.w-2,box.y,"x","7","0")
       text(box.x+2,box.y+1,"[Apps]",self.showRunning and "f" or "0",self.showRunning and "8" or "b")
       text(box.x+9,box.y+1,"[Running:"..#self.windows.."]",self.showRunning and "0" or "f",self.showRunning and "b" or "8")
       if self.notice then text(box.x+2,box.y+2,theme.fit(self.notice,box.w-4),"e","0") end
@@ -266,13 +327,24 @@ function M.new(display,keys,options)
       if #matches==0 then text(box.x+2,box.y+5,self.showRunning and #self.windows==0 and "No open windows." or "No matching apps.","7","0") end
       text(box.x+2,box.y+box.h-1,theme.fit("Enter:open F2:switch",box.w-4),"7","0")
     end
+    if self.systemMenu then
+      local box,items=systemLayout()
+      shadow(box); fill(box.x,box.y,box.w,box.h,"0")
+      text(box.x+1,box.y,"Orbit", "f","0")
+      for i,item in ipairs(items) do
+        local selected=i==self.systemSelection; local bg=selected and "b" or "0"; local fg=selected and "0" or "f"
+        if not display.isColor() and selected then bg="f" end
+        fill(item.x,item.y,item.w,1,bg); text(item.x,item.y,(selected and "> " or "  ")..theme.fit(item.label,item.w-2),fg,bg)
+      end
+      text(box.x+1,box.y+box.h-1,"Esc:close  F1:apps","7","0")
+    end
     display.setCursorBlink(false)
     local grayscale=function(value) return (value:gsub("[^078f]","7")) end
     for y=1,self.height do
       local line,fg,bg=t.getLine(y); if not display.isColor() then fg,bg=grayscale(fg),grayscale(bg) end
       display.setCursorPos(1,y); display.blit(line,fg,bg)
     end
-    if focused and not focused.hidden and not self.launcher and focused.surface.blink then
+    if focused and not focused.hidden and not self.launcher and not self.systemMenu and focused.surface.blink then
       local s=focused.surface
       if s.x>=1 and s.x<=s.width and s.y>=1 and s.y<=s.height then display.setCursorPos((focused.full and 0 or focused.x)+s.x,(focused.full and 0 or focused.y)+s.y); display.setCursorBlink(true) end
     end

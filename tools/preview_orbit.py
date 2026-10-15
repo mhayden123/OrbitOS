@@ -40,9 +40,9 @@ local screen,d,defs=make(80,30,true)
 d.render(); capture(screen,"APP LIBRARY / 80 x 30")
 local program=d.open(defs[2]); program.app.page="path"; program.app.path="/clock.lua"
 local network=d.open(defs[3]); network.app.source=program.id
-d.geometry(program,3,3,45,20); d.geometry(network,24,7,53,21)
-d.render(); capture(screen,"FLOATING WINDOWS / 80 x 30")
-local settings=d.open(defs[5]); d.render(); capture(screen,"SETTINGS / RESPONSIVE CARDS")
+d.geometry(program,3,3,45,20); d.geometry(network,999,999,53,21)
+d.render(); capture(screen,"WINDOWS AT SCREEN EDGE / 80 x 30")
+local settings=d.open(defs[5]); d.toggleSystem(); d.render(); capture(screen,"ORBIT MENU / SYSTEM CONTROLS")
 local pocket,p,apps=make(40,30,true)
 local fleet=p.open(apps[1])
 fleet.app.event("rednet_message",7,{version=1,group="quarry",kind="status",session="7:boot",state="running",reason="Working",

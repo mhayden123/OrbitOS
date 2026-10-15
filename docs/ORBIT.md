@@ -1,4 +1,4 @@
-# Orbit OS 0.4.1
+# Orbit OS 0.4.2
 
 Orbit is a desktop environment for CC:Tweaked, built on CraftOS. It includes Turtle Fleet, movable and resizable app windows, a searchable app library, wired and wireless monitor casting, and an Update Center. It runs entirely as in-game Lua. Version 0.4.0 introduces a light interface, blue accents, clearer window controls, a dock, and layouts that use the space available on each device.
 
@@ -23,9 +23,12 @@ Live companion testing confirmed 80×30 on an advanced desktop and 40×30 on an 
 
 Version 0.4.1 incorporates an independent first-use review: stronger text contrast, outlined fields, bracketed buttons, darker active title bars, a visible Running tab and restore control, and a visual Programs browser. Floating windows show their name once in the title bar; full-screen apps retain their own heading. Enter advances through form fields instead of returning to the first field.
 
+Version 0.4.2 separates the **Orbit** system menu (Settings, Updates, Help and Exit) from the **Apps** library. On compact screens, open Apps and select its Orbit button, or press F9. Exit still asks for confirmation. Window and menu shadows are clipped before reaching the screen edge or dock.
+
 | Control | Action |
 | --- | --- |
 | Apps button or F1 | Open or hide the searchable app library |
+| Orbit button or F9 | Open or hide system controls; Escape dismisses |
 | Type in the app library | Filter apps; arrows/Tab select and Enter opens |
 | Drag a window title | Move the window |
 | Drag its bottom edge | Resize the window |
@@ -138,7 +141,7 @@ Updates start only on request. Downgrades through the update source are rejected
 
 ## Verification and current limits
 
-All 129 test groups pass. The suite includes real release-bundle installation, desktop window behavior at native and enlarged device sizes, keyboard and mouse control, app isolation, packet validation, owner restrictions, frame ordering, touch mapping, detach/reconnect handling, checksum vectors, HTTP/local update sources, failed writes and rollback. UI checks cover app search, dock overflow, compact/desktop transitions, menu pagination, parent-screen repainting, palette restoration and themed casting. End-to-end simulations run an excavation using Fleet inside the standalone Orbit bundle while another app is focused. A rendered preview uses the actual Lua character/color buffers.
+All 131 test groups pass. The suite includes real release-bundle installation, desktop window behavior at native and enlarged device sizes, keyboard and mouse control, app isolation, packet validation, owner restrictions, frame ordering, touch mapping, detach/reconnect handling, checksum vectors, HTTP/local update sources, failed writes and rollback. UI checks cover app search, dock overflow, compact/desktop transitions, menu pagination, parent-screen repainting, palette restoration and themed casting. End-to-end simulations run an excavation using Fleet inside the standalone Orbit bundle while another app is focused. A rendered preview uses the actual Lua character/color buffers.
 
 The 0.4.0 interface was also checked in Minecraft on the 40×30 advanced pocket and 80×30 advanced desktop: app search, pocket Settings and Back navigation, live turtle discovery, window dragging, resizing, and dock restoration. Turtle #1 remained idle during these UI checks.
 
