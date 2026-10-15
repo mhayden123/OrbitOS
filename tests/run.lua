@@ -386,6 +386,7 @@ end)
 
 require("orbit_tests").run(test,equal)
 require("update_app_tests").run(test,equal)
+require("resolution_tests").run(test,equal)
 require("worker_update_tests").run(test,equal)
 test("Orbit release: Fleet completes excavation while another app is focused",function()
   require("integration").run(true,true)

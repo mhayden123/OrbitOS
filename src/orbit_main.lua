@@ -35,7 +35,7 @@ local ok,why=pcall(function()
     input=function(id,x,y) manager.appInput(id,"mouse_click",1,x,y); manager.appInput(id,"mouse_up",1,x,y) end})
   local options={keys=keys,config=config,saveConfig=saveConfig,version=VERSION,id=os.getComputerID(),boot=boot,
     now=os.clock,load=ui.load,save=ui.save,fs=fs,http=http,decode=textutils.unserializeJSON,
-    term=term,shell=shell,cast=casting,fleetUpdates=updating,modemCount=function() return modemCount end,
+    term=term,shell=shell,resolutionApi=orbit_display,cast=casting,fleetUpdates=updating,modemCount=function() return modemCount end,
     windows=function() return manager.windows end,title=function(id) local w=manager.find(id); return w and w.title end,
     quit=function() manager.running=false end}
   local definitions=apps.definitions(options)

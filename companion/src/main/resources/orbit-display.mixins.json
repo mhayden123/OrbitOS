@@ -1,0 +1,8 @@
+{
+  "required": true,
+  "package": "dev.orbitos.display.mixin",
+  "compatibilityLevel": "JAVA_25",
+  "mixins": ["ComputerSystemAccessor", "ServerComputerMixin"],
+  "client": ["GuiMixin"],
+  "injectors": {"defaultRequire": 1}
+}

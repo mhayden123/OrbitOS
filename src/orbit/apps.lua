@@ -8,6 +8,7 @@ local task=require("orbit.task")
 local update=require("orbit.update")
 local releaseInfo=require("orbit.release")
 local workerRelease=require("fleet.updates")
+local resolution=require("orbit.resolution")
 local M={}
 local function button(id,label,enabled,primary) return {id=id,label=label,enabled=enabled,primary=primary} end
 local function note(text) return {text=text} end
@@ -255,6 +256,7 @@ function M.definitions(o)
   definitions[#definitions+1]={id="settings",title="Settings & help",singleton=true,minW=26,minH=13,create=function(display)
     local app=generic(display); app.group=o.config.group
     function app.render()
+      if app.resolution then app.resolution.render(); return end
       if app.page=="message" then app.p.draw("ORBIT HELP","",app.messageItems(),"Back"); return end
       if app.page=="quit" then
         app.p.draw("EXIT ORBIT?","Apps will close",{note("Fleet turtles pause when"),note("their controller link expires."),
@@ -264,11 +266,17 @@ function M.definitions(o)
         field("group","Display network group",app.group,function(v) app.group=v end),button("save","Save network group"),
         note("Fleet keeps its own group settings.")},"Back"); return end
       app.p.draw("SETTINGS & HELP","Orbit "..o.version.." / computer #"..o.id,{
-        button("network","Display network"),button("help","Windows & keyboard help"),button("quit","Exit Orbit")})
+        button("resolution","Screen resolution"),button("network","Display network"),button("help","Windows & keyboard help"),button("quit","Exit Orbit")})
     end
     function app.event(...)
+      if app.resolution then
+        app.resolution.event(...)
+        if not app.resolution.running then app.resolution=nil; app.p.reset() end
+        return
+      end
       local a=app.p.event(...)
       if a=="back" then if app.page=="quit" or app.page=="network" then app.page="home"; app.p.reset() else app.back() end
+      elseif a=="resolution" then app.resolution=resolution.new(display,o)
       elseif a=="network" then app.page="network"; app.p.reset()
       elseif a=="save" then
         if app.group:match("^[%w_-]+$") and #app.group<=32 then
@@ -279,6 +287,8 @@ function M.definitions(o)
       elseif a=="cancel" then app.page="home"
       elseif a=="exit" then o.quit() end
     end
+    function app.tick() if app.resolution then app.resolution.tick() end end
+    function app.close() if app.resolution then app.resolution.close() end end
     return app
   end}
   return definitions

@@ -1,6 +1,7 @@
 """Render actual Orbit app buffers for visual QA (not an in-game screenshot)."""
 from pathlib import Path
 import sys
+import json
 from PIL import Image, ImageDraw, ImageFont
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -58,7 +59,8 @@ cw, ch, pad, gap = 10, 20, 18, 18
 panel_w, panel_h = 51*cw+2*pad, 20*ch+60
 sheet = Image.new("RGB", (2*panel_w+3*gap, 3*panel_h+4*gap+32), "#141c29")
 draw = ImageDraw.Draw(sheet)
-draw.text((gap,10), "ORBIT OS 0.2 | Actual Lua terminal buffers, rendered in simulation", font=font, fill="#dce7f5")
+version = json.loads((ROOT / "release.json").read_text(encoding="utf-8"))["orbitVersion"]
+draw.text((gap,10), f"ORBIT OS {version} | Actual Lua terminal buffers, rendered in simulation", font=font, fill="#dce7f5")
 for i, frame in enumerate(frames.values()):
     x, y = gap+(i%2)*(panel_w+gap), 32+gap+(i//2)*(panel_h+gap)
     draw.rounded_rectangle((x,y,x+panel_w,y+panel_h),radius=10,fill="#263145",outline="#506079")

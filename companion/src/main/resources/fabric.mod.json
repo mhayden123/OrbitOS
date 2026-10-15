@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 1,
+  "id": "orbit_display",
+  "version": "0.1.0",
+  "name": "Orbit Display",
+  "description": "Per-computer resolution controls for CC: Tweaked and Orbit OS, with timed previews and automatic screen fitting.",
+  "environment": "*",
+  "license": "MIT",
+  "entrypoints": {
+    "main": ["dev.orbitos.display.OrbitDisplay"],
+    "jei_mod_plugin": ["dev.orbitos.display.client.OrbitJeiPlugin"]
+  },
+  "mixins": ["orbit-display.mixins.json"],
+  "depends": {
+    "fabricloader": ">=0.19.4",
+    "minecraft": "26.3",
+    "java": ">=25",
+    "computercraft": "1.120.3"
+  }
+}

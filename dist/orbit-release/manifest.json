@@ -1,10 +1,10 @@
 {
   "format": 1,
   "product": "orbit-os",
-  "version": "0.2.1",
+  "version": "0.3.0",
   "artifact": "orbit.lua",
-  "size": 109303,
-  "sha256": "ef16f6c129981d5a24231ef5ba6c2fd7fe0643c936eb182a45ac892d2087d087",
+  "size": 115574,
+  "sha256": "def4f850e42f9ab70ae5e2899056b1fe1dbbe36507826f8c521ef130b0c6c388",
   "apps": [
     {
       "id": "fleet",
@@ -14,22 +14,22 @@
     {
       "id": "program",
       "title": "Run a program",
-      "version": "0.2.1"
+      "version": "0.3.0"
     },
     {
       "id": "network",
       "title": "Displays",
-      "version": "0.2.1"
+      "version": "0.3.0"
     },
     {
       "id": "updates",
       "title": "Updates",
-      "version": "0.2.1"
+      "version": "0.3.0"
     },
     {
       "id": "settings",
       "title": "Settings & help",
-      "version": "0.2.1"
+      "version": "0.3.0"
     }
   ]
 }

@@ -1,4 +1,4 @@
-# Orbit OS 0.2.1
+# Orbit OS 0.3.0
 
 Orbit is a desktop environment for CC:Tweaked, built on CraftOS. It includes Turtle Fleet, movable and resizable app windows, a program launcher, wired and wireless monitor casting, and an Update Center. It runs entirely as in-game Lua.
 
@@ -12,6 +12,12 @@ Orbit is a desktop environment for CC:Tweaked, built on CraftOS. It includes Tur
 You can also copy `orbit.lua` directly and run it without installation. The installer writes `/orbit.lua`, retains numbered backups, and preserves Fleet settings. The optional startup launcher lives at `/startup/orbit.lua`; its temporary files and backups are kept outside the startup directory. Existing custom startup scripts are preserved. If Fleet already starts on boot, automatic Orbit startup is disabled to avoid starting two controllers; launch Orbit manually or adjust your startup configuration.
 
 Use an advanced computer for mouse interaction. Basic computers support keyboard navigation. Desktop and receiver screens support 51×19 computers, 26×20 pockets and 39×13 turtles. **The Fleet controller itself still needs at least 26×19**, so run that app on a computer or pocket. Small displays use full-screen apps. Fleet needs full screen on a standard 51×19 computer; on a larger terminal it can use a floating window with at least 26×19 cells of content.
+
+## Screen resolution
+
+With the optional [Orbit Display companion mod](../companion/README.md), open **Settings & help → Screen resolution**. Choose Default, Balanced, More space or Custom. The enlarged computer GUI automatically fits the game window, and a 15-second confirmation restores the old size if you cannot use the new layout. Confirmed sizes persist per computer. Desktop and pocket presets are different; mouse and keyboard navigation both work. Install the companion JAR on the client and server and restart Minecraft once. Orbit's Update button updates the Lua interface, while Java companion upgrades require a Minecraft restart.
+
+Live companion testing confirmed 80×30 on an advanced desktop and 40×30 on an advanced wireless pocket, automatic preview rollback, desktop persistence through a game restart, and working Fleet windows at the larger size. See the companion guide for exact version requirements and validation limits.
 
 ## Desktop controls
 

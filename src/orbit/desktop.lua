@@ -154,6 +154,10 @@ function M.new(display,keys,options)
     end
   end
   function self.render()
+    -- A main-thread peripheral/API call can resize the terminal while another
+    -- coroutine is waiting. Reconcile before drawing, even if its event was filtered.
+    local actualWidth,actualHeight=display.getSize()
+    if actualWidth~=self.width or actualHeight~=self.height then self.event("term_resize") end
     local t=canvas.term; t.setBackgroundColor(32768); t.clear()
     -- Hidden windows still render into their buffers for live monitor casting.
     for _,w in ipairs(self.windows) do
