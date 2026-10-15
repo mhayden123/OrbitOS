@@ -274,7 +274,7 @@ function M.definitions(o)
         if app.group:match("^[%w_-]+$") and #app.group<=32 then
           o.cast.stopAll(); o.cast.peers={}; o.config.group=app.group; o.saveConfig(); app.notice("Display network saved.")
         else app.notice("Use 1-32 letters, digits, hyphens or underscores.") end
-      elseif a=="help" then app.notice("Drag a title to move a window. Drag its bottom edge to resize. Title controls: C casts, - minimizes, + maximizes, X closes. F1 opens Apps; F2 switches; F3 toggles full screen; F4 moves and F5 resizes using arrows, then Enter; F6 opens casting; F10 closes the current app. Fleet uses full screen when its controls need the space. Wired monitors appear directly. Wireless displays need a receiver computer running orbit receive, with this computer's ID and matching group. Receiver taps require permission on both computers. Programs share the computer's files and use cooperative multitasking.")
+      elseif a=="help" then app.notice("Drag a title to move a window. Drag its bottom edge to resize. Title controls: Cast shares, - minimizes, + maximizes, X closes. F1 opens Apps; F2 switches; F3 toggles full screen; F4 moves and F5 resizes using arrows, then Enter; F6 opens casting; F10 closes the current app. Fleet uses full screen when its controls need the space. Wired monitors appear directly. Wireless displays need a receiver computer running orbit receive, with this computer's ID and matching group. Receiver taps require permission on both computers. Programs share the computer's files and use cooperative multitasking.")
       elseif a=="quit" then app.page="quit"
       elseif a=="cancel" then app.page="home"
       elseif a=="exit" then o.quit() end

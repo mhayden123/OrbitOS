@@ -1,4 +1,4 @@
-# Orbit OS 0.2.0
+# Orbit OS 0.2.1
 
 Orbit is a desktop environment for CC:Tweaked, built on CraftOS. It includes Turtle Fleet, movable and resizable app windows, a program launcher, wired and wireless monitor casting, and an Update Center. It runs entirely as in-game Lua.
 
@@ -43,7 +43,7 @@ Up to eight windows can run at once. Turtle discovery, update transfers and hear
 3. In **Displays**, verify the selected app, or use **Choose an app**. Open **Connection help & options** and turn **Monitor taps: On** if you want interaction.
 4. Select a monitor. On short windows, use **More** to reach the display list.
 
-The app is mirrored to the monitor and keeps running when its window is hidden. Larger monitors center the app; smaller monitors are rejected with a size explanation instead of clipping controls. Enlarge the monitor or reduce its text scale. For a directly accessible monitor you can set its scale in CraftOS with `lua`, followed by `peripheral.wrap("monitor_0").setTextScale(0.5)` using its actual peripheral name. **Stop all casts** ends sharing.
+The app is mirrored to the monitor and keeps running when its window is hidden. Larger monitors center the app. If an app does not fit, Orbit automatically reduces the monitor text size, choosing the largest scale that fits down to 0.5. If even that cannot fit, the original scale is restored and Orbit explains how large the monitor must be. Successful casts retain the adjusted text size. The same fitting behavior works on wireless receivers running Orbit 0.2.1 or later. **Stop all casts** ends sharing.
 
 Advanced monitor taps map to clicks inside the app. They do not provide keyboard entry or dragging; use the sender computer for text fields. Basic monitors can display apps but do not generate touch events. Monitor capabilities and wired peripheral access follow the [CC:Tweaked monitor API](https://tweaked.cc/peripheral/monitor.html).
 

@@ -195,6 +195,18 @@ function M.run(test,equal)
     connected=true; now=7; host.tick(); equal(host.streams[target.key].status,"Live")
     host.stopAll(); assert(screen.text():find("Cast stopped")); equal(next(host.streams),nil)
   end)
+  test("Orbit casting: auto-fit uses the largest readable scale and restores it if no fit is possible",function()
+    local screen=terminal.new(40,20,true); local t=screen.api; local scale=1; local changes=0
+    t.getTextScale=function() return scale end
+    t.setTextScale=function(value) scale=value; changes=changes+1; screen.resize(math.floor(40/value),math.floor(20/value)) end
+    local src=surface.new(51,19,true)
+    assert(cast.paint(t,src.frame())); equal(scale,0.5); equal(changes,1)
+    assert(cast.paint(t,src.frame())); equal(changes,1)
+    t.setTextScale(1); local huge=surface.new(100,30,true)
+    assert(not cast.paint(t,huge.frame())); equal(scale,1)
+    t.setTextScale=function() error("Monitor detached") end
+    assert(not cast.paint(t,src.frame()))
+  end)
 end
 
 -- Exercise the actual standalone installer without source modules or companion files.

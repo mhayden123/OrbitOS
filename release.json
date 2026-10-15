@@ -1,5 +1,5 @@
 {
-  "orbitVersion": "0.2.0",
+  "orbitVersion": "0.2.1",
   "fleetVersion": "0.3.1",
   "updateSource": "https://raw.githubusercontent.com/mhayden123/OrbitOS/main/dist/orbit-release"
 }

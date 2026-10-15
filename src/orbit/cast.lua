@@ -39,10 +39,26 @@ function M.validFrame(f)
   end
   return true
 end
+local function fit(monitor,width,height)
+  local w,h=monitor.getSize()
+  if w>=width and h>=height then return w,h end
+  if monitor.getTextScale and monitor.setTextScale then
+    local original=monitor.getTextScale()
+    local ok,fw,fh=pcall(function()
+      for scale=original-0.5,0.5,-0.5 do
+        monitor.setTextScale(scale); w,h=monitor.getSize()
+        if w>=width and h>=height then return w,h end
+      end
+    end)
+    if ok and fw then return fw,fh end
+    pcall(monitor.setTextScale,original)
+  end
+  return nil,"Enlarge this monitor to fit "..width.."x"..height.." cells."
+end
 function M.paint(monitor,frame)
   if not M.validFrame(frame) then return nil,"Invalid display frame" end
-  local w,h=monitor.getSize()
-  if w<frame.width or h<frame.height then return nil,"Monitor too small; enlarge it or use text scale 0.5." end
+  local w,h=fit(monitor,frame.width,frame.height)
+  if not w then return nil,h end
   local x,y=math.floor((w-frame.width)/2)+1,math.floor((h-frame.height)/2)+1
   monitor.setCursorBlink(false); monitor.setBackgroundColor(32768); monitor.clear()
   if frame.palette and monitor.setPaletteColor then for i,p in ipairs(frame.palette) do monitor.setPaletteColor(2^(i-1),p[1],p[2],p[3]) end end
@@ -84,7 +100,15 @@ function M.host(o)
   function self.start(target,source,touch)
     local frame=o.frame(source); if not frame then return nil,"Open an app first." end
     if not M.validFrame(frame) then return nil,"App is too large to cast (12,000 cell limit)." end
-    if target.width<frame.width or target.height<frame.height then return nil,"Monitor needs "..frame.width.."x"..frame.height.." cells. Set its text scale to 0.5 or enlarge it." end
+    if not target.id then
+      local found=false
+      for _,m in ipairs(o.monitors()) do if m.name==target.monitor then
+        found=true
+        local w,h=fit(m.term,frame.width,frame.height); if not w then return nil,h end
+        target.width,target.height=w,h
+      end end
+      if not found then return nil,"Monitor disconnected. Check its cable." end
+    end
     self.stop(target.key); self.next=self.next+1
     self.streams[target.key]={target=target,source=source,touch=touch,token=o.boot..":"..self.next,seq=0,
       status=target.id and "Connecting" or "Live",sent=0,seen=o.now(),ready=not target.id}
